@@ -1,4 +1,4 @@
-R Notebook
+Notes for Team
 ================
 
 This is just a scratchpad for all of us for now – I’m going to include a
