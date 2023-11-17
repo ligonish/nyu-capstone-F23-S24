@@ -1,0 +1,27 @@
+Cohort,Date Added,ZIP,Borough,Neighborhood,Notes
+1,2017-08-11,10026,Manhattan,Harlem,Carryover from 2016 ELS pilot; enacted Aug 11 2017 via Local Law 136
+1,2017-08-11,10027,Manhattan,Harlem,Carryover from 2016 ELS pilot; enacted Aug 11 2017 via Local Law 136
+1,2017-08-11,10302,Staten Island,Port Richmond,Carryover from 2016 ELS pilot; enacted Aug 11 2017 via Local Law 136
+1,2017-08-11,10303,Staten Island,Mariners Harbor,Carryover from 2016 ELS pilot; enacted Aug 11 2017 via Local Law 136
+1,2017-08-11,10457,Bronx,Tremont,Carryover from 2016 ELS pilot; enacted Aug 11 2017 via Local Law 136
+1,2017-08-11,10467,Bronx,Williamsbridge,Carryover from 2016 ELS pilot; enacted Aug 11 2017 via Local Law 136
+1,2017-08-11,11216,Brooklyn,Bedford-Stuyvesant/Crown Heights,Carryover from 2016 ELS pilot; enacted Aug 11 2017 via Local Law 136
+1,2017-08-11,11221,Brooklyn,Bushwick/Bedford-Stuyvesant,Carryover from 2016 ELS pilot; enacted Aug 11 2017 via Local Law 136
+1,2017-08-11,11433,Queens,Jamaica,Carryover from 2016 ELS pilot; enacted Aug 11 2017 via Local Law 136
+1,2017-08-11,11434,Queens,South Jamaica,Carryover from 2016 ELS pilot; enacted Aug 11 2017 via Local Law 136
+2,2017-10-01,10025,Manhattan,Upper West Side,Date floored to first of month by SL (imputation here until we find more specifics)
+2,2017-10-01,10314,Staten Island,Bull's Head,Date floored to first of month by SL (imputation here until we find more specifics)
+2,2017-10-01,10468,Bronx,Jerome Park,Date floored to first of month by SL (imputation here until we find more specifics)
+2,2017-10-01,11225,Brooklyn,Prospect Lefferts Gardens,Date floored to first of month by SL (imputation here until we find more specifics)
+2,2017-10-01,11373,Queens,Elmhurst,Date floored to first of month by SL (imputation here until we find more specifics)
+3,2018-11-01,10031,Manhattan,Hamilton Heights,Date floored to first of month by SL (imputation here until we find more specifics)
+3,2018-11-01,10310,Staten Island,West Brighton,Date floored to first of month by SL (imputation here until we find more specifics)
+3,2018-11-01,10462,Bronx,Van Nest,Date floored to first of month by SL (imputation here until we find more specifics)
+3,2018-11-01,11226,Brooklyn,Flatbush,Date floored to first of month by SL (imputation here until we find more specifics)
+3,2018-11-01,11385,Queens,Glendale,Date floored to first of month by SL (imputation here until we find more specifics)
+4,2019-12-01,10029,Manhattan,East Harlem,Date floored to first of month by SL (imputation here until we find more specifics)
+4,2019-12-01,10034,Manhattan,Inwood,Date floored to first of month by SL (imputation here until we find more specifics)
+4,2019-12-01,10453,Bronx,Morris Heights,Date floored to first of month by SL (imputation here until we find more specifics)
+4,2019-12-01,11207,Brooklyn,East New York,Date floored to first of month by SL (imputation here until we find more specifics)
+4,2019-12-01,11691,Queens,Rockaway,Date floored to first of month by SL (imputation here until we find more specifics)
+5,2021-05-11,all others,,,
