@@ -1,6 +1,6 @@
 # -----------------------------------------------------------------------------
 # Initial Capstone Data Pull: Testing API Method
-# Date: 2023-11-14
+# Date: 2023-12-07
 # Author: SL
 # Source: https://nycopendata.socrata.com/Housing-Development/Housing-Maintenance-Code-Violations/wvxf-dwi5
 # See documentation folder for data dictionaries 
