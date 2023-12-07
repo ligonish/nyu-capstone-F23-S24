@@ -99,5 +99,5 @@ pluto_zip_only <- pluto_clean %>%
   summarize(unit_count_2012 = sum(unitsres)) %>%
   arrange(zipcode)
 
-write.csv(pluto_zip_only, here("data_build", "pluto_zip_tract.csv"))
+write.csv(pluto_zip_only, here("data_build", "pluto_zip_only.csv"))
 
