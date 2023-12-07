@@ -42,6 +42,12 @@ flag_counts <- pluto_join %>%
   group_by(bldgclass) %>%
   summarize(count = sum(possible_rental, na.rm = T))
 
+# units by class
+
+unit_by_class <- pluto_join %>%
+  group_by(bldgclass) %>%
+  summarize(sum = sum(unitsres, na.rm = T))
+
 # dropping condos/coops/other classes
 
 classes_to_drop <- c("A0", "A3", "A6", "A7", "A8", "C6", "C8", "CM", "D0", "DC", "D4", "D5", 
