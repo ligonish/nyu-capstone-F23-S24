@@ -34,7 +34,7 @@ token <- "XXXXXXXXXXXXXXXXXXXX"
 
 # Pull Subset: Heat/HW/Gas Violations, 2012 - Present -------------------------
 
-url <- "https://data.cityofnewyork.us/resource/wvxf-dwi5.json?$where= inspectiondate >= '2012-01-01T00:00:00.000' and (ordernumber = '666' or ordernumber = '664' or ordernumber = '966' or ordernumber = '964' or ordernumber = '670' or ordernumber = '970' or ordernumber = '742' or ordernumber = '577' or ordernumber = '877' or ordernumber = '510' or ordernumber = '810')"
+url <- "https://data.cityofnewyork.us/resource/wvxf-dwi5.json?$where= inspectiondate >= '2012-01-01T00:00:00.000' and (ordernumber = '577' or ordernumber = '664' or ordernumber = '666' or ordernumber = '670' or ordernumber = '742' or ordernumber = '877' or ordernumber = '964' or ordernumber = '966' or ordernumber = '970' or ordernumber = '1524')"
 util_violations <- read.socrata(url = url, app_token = token) 
      # NB: we'll keep refining violation code selection here, and repeat with all Class C in batches/compressed
 
