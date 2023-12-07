@@ -45,7 +45,7 @@ flag_counts <- pluto_join %>%
 # dropping condos/coops/other classes
 
 classes_to_drop <- c("A0", "A3", "A6", "A7", "A8", "C6", "C8", "CM", "D0", "DC", "D4", "D5", 
-                     "D8", "D9", "O1", "O2", "O3", "O4", "O5", "O6", "O7", "O9",
+                     "D9", "O1", "O2", "O3", "O4", "O5", "O6", "O7", "O9",
                      "K1", "K2", "K3", "K5", "K6", "K7", "K8", "K9")
 
 pluto_clean <- pluto_join %>%
@@ -73,18 +73,25 @@ pluto_clean <- pluto_join %>%
 
 sum(pluto_clean$unitsres)
 
-write.csv("/data_build/pluto_clean.csv")
+write.csv(pluto_clean, here("data_build", "pluto_clean.csv"))
     
-# by filtering on the prior conditions, we arrive at 1.9 million rental units, which is remarkably close
+# by filtering on the prior conditions, we arrive at 1.93 million rental units, which is remarkably close
 # to the 2.1 million rental units estimated by HVS in their 2011 survey
 
 # our estimate is conservative as it requires a logged complaint from a 1-2 family unit sometime in
 # the last 20 years to merit inclusion in the dataframe
 
-pluto_res_tract <- pluto_clean %>%
+pluto_zip_tract <- pluto_clean %>%
   group_by(tract_2010, zipcode) %>%
   summarize(unit_count_2012 = sum(unitsres)) %>%
   arrange(tract_2010)
 
-write.csv("/data_build/pluto_tract_zip.csv")
-  
+write.csv(pluto_zip_tract, here("data_build", "pluto_zip_tract.csv"))
+
+pluto_zip_only <- pluto_clean %>%
+  group_by(zipcode) %>%
+  summarize(unit_count_2012 = sum(unitsres)) %>%
+  arrange(zipcode)
+
+write.csv(pluto_zip_only, here("data_build", "pluto_zip_tract.csv"))
+
