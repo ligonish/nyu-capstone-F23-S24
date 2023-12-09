@@ -69,38 +69,67 @@ violations <- violations %>%
       TRUE ~ 1)  # indicates whether violation inspection was on unit with RTC
   )  
 
-rm(rtc_zips)
+# Check for missing ZIP codes --------------------------------------------------
+
+zip_summary <- violations %>% 
+  group_by(zip) %>% 
+  summarize(n_violations = n_distinct(violationid))%>% 
+  arrange(desc(zip)) 
+
+# 183 distinct ZIP codes in violation data, 2012-2023
+# 188 violation observations with faulty zip entries (impute these from PLUTO using bbl and/or street address):
+     # 178 with NA zips
+     # 5 with zip entered as "2016" 
+     # 1 with zip entered as "2015" 
+     # 2 with "112226" when street address indicates they meant "11226" (delete extra 2)
+     # 2 with "111010" when street address indicates they meant "11101" (delete final 0)
+
+faulty_zips <- violations %>% 
+  filter(zip == "2015"| zip == "2016" | is.na(zip)) %>%   # 184 clearly faulty zip values total
+  select(violationid, bbl, boroid, boro, housenumber, streetname, zip, censustract, inspectiondate) %>% 
+  arrange(inspectiondate)  # 79 fall in our pre-COVID timeline of interest
 
 
-# Save -------------------------------------------------------------------------
+# Save 2012-2023 Violations ----------------------------------------------------
 
 write_csv(violations, "data_build/cleaner_utility_violations.csv.gz")
 
 
-# Add ZIP-Level ACS 5-Yr Occupied Renter Unit Estimates ------------------------
+# Filter Pre-COVID ZIP-Level Data for Initial Descriptive Stats -------------
 
-# For "violation intensity" visualization, as n violations per 1k renter-occupied units in ZIP.
-# We'll use tract-level version of this as outcome of interest; see below.
+precovid_zip_violations <- violations %>% 
+  filter(inspectiondate <= "2020-02-29",
+         zip != "2016",
+         !is.na(zip))   # RETURN THESE AFTER HAND-EDITING FAULTY ZIPS
 
-# NB this won't merge well or be accurate until violation set's ZIP values
-# are more thoroughly checked, cleaned, & crosswalked. We'll also need to crosswalk 
-# the ZCTAs to their 2010 and 2020-era ZIP codes for merge, since ZCTAs and ZIPs 
-# aren't identical. Below is just a rough sketch for early data peek.)
+for_analysis <- precovid_zip_violations %>% 
+  group_by(zip, inspection_yr_mo) %>% 
+  summarize(n_violations = n_distinct(violationid, na.rm = F)) %>%     # 17,640 obs from Jan 2012 - Feb 2020 
+  ungroup() %>% 
+  complete(zip, inspection_yr_mo, fill = list(n_violations = 0)) # expand all 12 annual yearmonth observations for all zip codes, even if no violations reported
 
-zcta_units <-  read_csv("data_build/acs5_zctas_12_23_renter_occ_units.csv") %>% 
-  rename(inspection_yr = year) %>% 
-  select(inspection_yr, zip, renter_occ_units)
+# Add ZIP-Level ACS 5-Yr Estimates ------------------------
 
-zip_intensity <- violations %>% 
-  left_join(zcta_units, by = c("inspection_yr", "zip")) %>%
-  group_by(zip, inspection_yr) %>% 
-  mutate(n_annual_zip_violations = n_distinct(violationid)) %>% 
-  mutate(yr_intensity = (n_annual_zip_violations/renter_occ_units)*1000) 
+acs_zcta <- read_csv("data_build/acs5_zctas_12_20_renter_occ_units.csv") %>% 
+  rename(zip = GEOID)
 
+for_analysis <- for_analysis %>% 
+  mutate(year = year(inspection_yr_mo)) %>%  
+  group_by(zip, inspection_yr_mo) %>% 
+  left_join(acs_zcta, by = c("year", "zip")) %>% 
+  select(-year) %>% 
+  mutate(n_violations_per_1k_units = ((n_violations/renter_occ_units)*1000), .after = n_violations) %>% 
+  left_join(rtc_zips, by = "zip") %>% 
+  mutate(
+    cohort = replace_na(cohort, 5),
+    rtc_treat_date = replace_na(rtc_treat_date, as_date("2021-05-11")), # all ZIPS not in cohorts 1-4 were added to treatment May 2021
+    treated = case_when(
+      rtc_treat_date > inspection_yr_mo ~ 0,
+      TRUE ~ 1)) 
 
 # Save -------------------------------------------------------------------------
 
-write_csv(violations, "data_build/rough_annual_zip_violation_intensities.csv.gz")
+write_csv(for_analysis, "data_build/2012_2020_zip_set_for_analysis.csv.gz")
 
 
 # Add Tract-Level ACS 5-Yr Occupied Renter Unit Estimates ----------------------
@@ -116,11 +145,9 @@ write_csv(violations, "data_build/rough_annual_zip_violation_intensities.csv.gz"
 
 # FOR TEAM: Next-Up Cleaning Priorities ----------------------------------------
 
-     # Thorough ID of missing values
-     # Summary analysis to turn up misrecorded ZIP codes and/or census tract numbers
-     # Crosswalk ZCTA to 2010 and 2020 NYC ZIP code
-     # Wrangle census tract value format to allow merging census estimates into violation set
-     # Merge in tract-level census estimates
+     # Impute the 79 missing ZIP code values (Jan 2012-Feb 2020) via PLUTO database and street address
+     # If necessary, wrangle census tract value format to allow merging census estimates into violation set
+     # If necessary, merge in tract-level census estimates
      # Make sure we wind up with a violation intensity rate for ALL residential zips/tracts, since some may not be included in violation data
      # [etc.!]
 
