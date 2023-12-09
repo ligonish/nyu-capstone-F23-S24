@@ -13,12 +13,15 @@ library(vtable) # summary stats in RMarkdown
 library(kableExtra) # prettier tables
 library(hrbrthemes) # prettier charts
 library(viridis) # accessible color palettes
+library(gghighlight) # visual emphasis on particular variables
 
 
 
 # Load Data -------------------------------------------------------------------
 
 zips <- read_csv("data_build/2012_2020_zip_set_for_analysis.csv.gz")  # 17,640 zip/yearmonth obs spanning Jan 2012 - Feb 2020
+violations <- read.csv("data_build/cleaner_utility_violations.csv.gz") %>% 
+  filter(inspectiondate <= "2020-02-29")   # 126,238 distinct violation obs spanning Jan. 2012 - Feb. 2020
 
 # Descriptive Stats -----------------------------------------------------------
 
@@ -57,29 +60,77 @@ zips %>%
 
 # Quick Descriptive Visuals: Violation Counts ---------------------------------------
 
-# Monthly violation count visual, by RTC treatment cohort 
+# Monthly violation count visual (citywide) 
 zips %>% 
+  group_by(inspection_yr_mo) %>% 
+  summarize(n_violations = sum(n_violations)) %>% 
   ggplot(aes(x = inspection_yr_mo,
              y = n_violations)) +
   geom_col(alpha = .8) +
   labs (x = NULL, y = "Citywide heat, hot water, or gas supply violations",
-        title = "Monthly utility violations, 2012-23",
+        title = "Monthly utility violations, 2012-20",
         subtitle = "Lorem ipsum dolor sit amet.",
         caption = "Source: NYC HPD Housing & Maintenance Code Violations, retrieved via NYC OpenData",
         fill = NULL)+
   theme_ipsum_rc(grid = "Y")
 
-# Monthly violation intensity, by RTC treatment cohort
+# Monthly violation intensity, by RTC treatment cohort 
+# see plots/monthly_violation_intensity_by_cohort.png
+
+cohort_labs <- c("1" = "RTC Wave 1 [n = 10 ZIPs]", "2" = "RTC Wave 2 [n = 5 ZIPs]", "3" = "RTC Wave 3 [n = 5 ZIPs]", "4" = "RTC Wave 4 [n = 5 ZIPs]", "5" = "RTC Control [n = 155 ZIPs]")
+
+# as faceted columns chart:
+
 zips %>% 
+  mutate(cohort = factor(cohort)) %>% 
+  group_by(cohort, inspection_yr_mo) %>% 
+  summarize(avg_monthly_intensity = mean(n_violations_per_1k_units, na.rm = T),
+            treated = mean(treated, na.rm = T)) %>%
+  mutate(treated = factor(treated)) %>% 
   ggplot(aes(x = inspection_yr_mo,
-             y = n_violations_per_1k_units)) +
-  geom_col(alpha = .8) +
-  labs (x = NULL, y = "Heat, hot water, or gas supply violations per 1k occupied rentals",
-        title = "Monthly utility violations, 2012-23",
-        subtitle = "Lorem ipsum dolor sit amet.",
+             y = avg_monthly_intensity,
+             group = cohort,
+             fill = treated)) +
+  geom_col() +
+  scale_fill_manual(values = c("azure4", "#E1AF00"),
+                    labels = c("Not Yet Treated", "Treated"))+
+  facet_wrap(~cohort,
+             scales = "free_x",
+             labeller = labeller(cohort = cohort_labs)) +   
+  labs (x = NULL, y = "hhw violations per 1k renter occupied units in ZIP",
+        title = "Mean monthly utility violations per 1k renter occupied units in New York City ZIP codes",
+        subtitle = "Issued by New York City housing inspectors, Jan. 2012 - Feb. 2020 ",
         caption = "Source: NYC HPD Housing & Maintenance Code Violations, retrieved via NYC OpenData",
         fill = NULL)+
-  theme_ipsum_rc(grid = "Y")
+  theme_ipsum_rc(grid = "Y")+
+  theme(legend.position="top", legend.title = element_blank())
+
+# as faceted line chart:
+
+zips %>%
+  mutate(cohort = factor(cohort)) %>% 
+  group_by(cohort, inspection_yr_mo) %>% 
+  summarize(avg_monthly_intensity = mean(n_violations_per_1k_units, na.rm = T)) %>%
+  ggplot(aes(x = inspection_yr_mo,
+             y = avg_monthly_intensity,
+             group = cohort, 
+             color = cohort)) +
+  geom_line(alpha = .6, linewidth = 1) +
+  gghighlight(use_direct_label = F,
+              unhighlighted_params = list(linewidth = 0.5, alpha = .7))+
+  facet_wrap(~cohort,
+             scales = "free_x",
+             labeller = labeller(cohort = cohort_labs)) +  
+  scale_color_viridis(discrete = T)+
+  labs (x = NULL, y = "hhw violations per 1k renter occupied units in ZIP",
+        title = "Mean monthly utility violations per 1k renter occupied units in New York City ZIP codes",
+        subtitle = "Issued by New York City housing inspectors, Jan. 2012 - Feb. 2020 ",
+        caption = "Source: NYC HPD Housing & Maintenance Code Violations, retrieved via NYC OpenData",
+        fill = NULL)+
+  theme_ipsum_rc(grid = "Y")+
+  theme(legend.position="none", legend.title = element_blank())
+
+
 
 # Monthly violation count visual, by RTC treatment cohort 
 zips %>% 
@@ -230,25 +281,28 @@ precovid_violations %>%
   theme_ipsum_rc(grid = "X")
 
 # Monthly intensity, by ever-treated status(columns)
-precovid_violations %>%
+zips %>%
   mutate(ever_treated = factor(
     case_when(
     cohort < 5 ~ 1,
     TRUE ~ 0 ))
     )%>% 
   group_by(ever_treated, inspection_yr_mo) %>% 
-  summarize(avg_monthly_intensity = mean(month_zip_violations_per1k_units, na.rm = T)) %>%
+  summarize(avg_monthly_intensity = mean(n_violations_per_1k_units, na.rm = T)) %>%
   ggplot(aes(x = inspection_yr_mo,
              y = avg_monthly_intensity,
              group = ever_treated, 
              fill = ever_treated)) +
-  geom_col(alpha = .8) +
-  labs (x = NULL, y = "Citywide heat, hot water, or gas supply violations",
-        title = "Monthly utility violations, 2012-23",
+  geom_col(alpha = .6) +
+  scale_fill_viridis(discrete = T) + 
+  labs (x = NULL, y = "hhw violations per 1k renter-occupied units in ZIP",
+        title = "Monthly utility violations by RTC Treatment Status, Jan. 2012 - Feb. 2020",
         subtitle = "Lorem ipsum dolor sit amet.",
         caption = "Source: NYC HPD Housing & Maintenance Code Violations, retrieved via NYC OpenData",
         fill = NULL)+
   theme_ipsum_rc(grid = "Y")
+
+
 
 # Monthly intensity, by cohort (illegible spaghetti chart)
 zips %>%
@@ -276,14 +330,15 @@ zips %>%
              y = avg_monthly_intensity,
              group = cohort, 
              fill = cohort)) +
-  geom_col(alpha = .8) +
-  labs (x = NULL, y = "Citywide heat, hot water, or gas supply violations",
+  geom_col(alpha = .8,
+           position = "identity") +
+  scale_fill_viridis(discrete = T)+
+  labs (x = NULL, y = "avg hhw violations per 1k renter occupied units in ZIP",
         title = "Monthly utility violations, 2012-23",
         subtitle = "Lorem ipsum dolor sit amet.",
         caption = "Source: NYC HPD Housing & Maintenance Code Violations, retrieved via NYC OpenData",
         fill = NULL)+
   theme_ipsum_rc(grid = "Y")
-
 
 
 
