@@ -94,11 +94,6 @@ acs5_zctas_12_20 <- map_dfr(
 zctas <- read_csv("data_build/2010_nyc_zctas.csv") %>% 
   mutate(GEOID = as.character(ZCTA))
 
-
-zctas <- read_csv("data_raw/nyc_zip_codes.csv") %>%
-  clean_names() %>% 
-  mutate(GEOID = as.character(jurisdiction_name))
-
 nyc_acs5_zctas_12_20 <- acs5_zctas_12_20 %>% 
   semi_join(zctas, by = "GEOID") %>% 
   rename(renter_occ_units = B25032_013E,

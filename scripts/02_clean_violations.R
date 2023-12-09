@@ -85,10 +85,11 @@ zip_summary <- violations %>%
      # 2 with "111010" when street address indicates they meant "11101" (delete final 0)
 
 faulty_zips <- violations %>% 
-  filter(zip == "2015"| zip == "2016" | is.na(zip)) %>%   # 184 clearly faulty zip values total
+  filter(zip == "2015"| zip == "2016" | zip == "112226" | zip == "111010" | is.na(zip)) %>%   # 188 clearly faulty zip values total, Jan 2012-Feb 2020
   select(violationid, bbl, boroid, boro, housenumber, streetname, zip, censustract, inspectiondate) %>% 
   arrange(inspectiondate)  # 79 fall in our pre-COVID timeline of interest
 
+write_csv(faulty_zips, "data_build/missing_or_faulty_zips_2012_2020.csv")
 
 # Save 2012-2023 Violations ----------------------------------------------------
 
