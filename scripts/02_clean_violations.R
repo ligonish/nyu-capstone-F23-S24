@@ -11,6 +11,7 @@
 library(tidyverse) # data manipulation
 library(janitor)   # cleaner variable names
 library(lubridate) # normalizes date objects
+library(plyr) # allows rbind with column fill
 
 
 # Data Import -----------------------------------------------------------------
@@ -95,13 +96,15 @@ write_csv(faulty_zips, "data_build/missing_or_faulty_zips_2012_2020.csv")
 
 write_csv(violations, "data_build/cleaner_utility_violations.csv.gz")
 
-
 # Filter Pre-COVID ZIP-Level Data for Initial Descriptive Stats -------------
+
+corrected_zips <- read.csv("data_build/corrected_zips_2012_2020.csv") # hand corrected by Jiayi/Reba
 
 precovid_zip_violations <- violations %>% 
   filter(inspectiondate <= "2020-02-29",
          zip != "2016",
-         !is.na(zip))   # RETURN THESE AFTER HAND-EDITING FAULTY ZIPS
+         !is.na(zip)) %>%
+  rbind.fill(corrected_zips)
 
 for_analysis <- precovid_zip_violations %>% 
   group_by(zip, inspection_yr_mo) %>% 
