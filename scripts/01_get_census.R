@@ -55,7 +55,8 @@ years <- lst(2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020) # for purrr l
 # latter as we keep working; that allows us to estimate violation rates at both 
 # the tract and the ZIP level, if we want to do so for visualizations etc.
 
-census_variables <- c("B25032_013",   # Total renter-occupied housing units 
+census_variables <- c("B25032_001",   # Total occupied housing units (added 2-8-2024, SL: for pct_rent estimation)
+                      "B25032_013",   # Total renter-occupied housing units 
                       "B25008_003",   # Total population in renter-occupied housing units
                       "B25119_003",   # Median household income (renter-occupied) 
                       "B25037_003",   # Median year structure built (renter-occupied) 
@@ -66,7 +67,9 @@ census_variables <- c("B25032_013",   # Total renter-occupied housing units
                       "B25003H_003",  # Total rent-occ units where householder is white alone, not Hispanic or Latino
                       "B25003B_003",  # Total rent-occ units where householder is Black alone
                       "B25003D_003",  # Total rent-occ units where householder is Asian alone
-                      "B25003I_003"   # Total rent-occ units where householder is Hispanic or Latino
+                      "B25003I_003",  # Total rent-occ units where householder is Hispanic or Latino
+                      "B17017_001",   # Total households (added 2-8-2024, SL: for pct_poverty denominator)
+                      "B17017_002"    # Total households w/ income below poverty threshold in past yr (added 2-8-2024, for pct_poverty numerator)
                       )  
 
 acs5_zctas_12_20 <- map_dfr(
@@ -96,7 +99,10 @@ zctas <- read_csv("data_build/2010_nyc_zctas.csv") %>%
 
 nyc_acs5_zctas_12_20 <- acs5_zctas_12_20 %>% 
   semi_join(zctas, by = "GEOID") %>% 
-  rename(renter_occ_units = B25032_013E,
+  rename(tot_occ_units = B25032_001E,
+         renter_occ_units = B25032_013E,
+         tot_hh = B17017_001E,
+         tot_hh_pov = B17017_002E,
          tot_pop_rou = B25008_003E,
          med_hh_inc_rou = B25119_003E,
          med_yr_blt_rou = B25037_003E,
@@ -117,7 +123,9 @@ nyc_acs5_zctas_12_20 <- acs5_zctas_12_20 %>%
   mutate(pct_wh_rou = round(tot_wh_rou/renter_occ_units, 2), .after = tot_wh_rou) %>% 
   mutate(pct_bl_rou = round(tot_bl_rou/renter_occ_units, 2), .after = tot_bl_rou) %>% 
   mutate(pct_asn_rou = round(tot_asn_rou/renter_occ_units, 2), .after = tot_asn_rou) %>%
-  mutate(pct_ltx_rou = round(tot_ltx_rou/renter_occ_units, 2), .after = tot_ltx_rou) 
+  mutate(pct_ltx_rou = round(tot_ltx_rou/renter_occ_units, 2), .after = tot_ltx_rou) %>% 
+  mutate(pct_rent = round(renter_occ_units/tot_occ_units, 2), .after = renter_occ_units) %>% 
+  mutate(pct_pov = round(tot_hh_pov/tot_hh, 2), .after = tot_hh_pov)
   
   
   
