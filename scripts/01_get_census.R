@@ -55,7 +55,9 @@ years <- lst(2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020) # for purrr l
 # latter as we keep working; that allows us to estimate violation rates at both 
 # the tract and the ZIP level, if we want to do so for visualizations etc.
 
-census_variables <- c("B25032_001",   # Total occupied housing units (added 2-8-2024, SL: for pct_rent estimation)
+census_variables <- c("B25001_001",   # Total housing units (added 2-18-2024, SL)
+                      "B25002_003",   # Total vacant housing units (added 2-18-2024, SL)
+                      "B25032_001",   # Total occupied housing units (added 2-8-2024, SL: for pct_rent estimation)
                       "B25032_013",   # Total renter-occupied housing units 
                       "B25008_003",   # Total population in renter-occupied housing units
                       "B25119_003",   # Median household income (renter-occupied) 
@@ -99,7 +101,9 @@ zctas <- read_csv("data_build/2010_nyc_zctas.csv") %>%
 
 nyc_acs5_zctas_12_20 <- acs5_zctas_12_20 %>% 
   semi_join(zctas, by = "GEOID") %>% 
-  rename(tot_occ_units = B25032_001E,
+  rename(tot_units = B25001_001E,
+         tot_occ_units = B25032_001E,
+         tot_vac_units = B25002_003E,
          renter_occ_units = B25032_013E,
          tot_hh = B17017_001E,
          tot_hh_pov = B17017_002E,
@@ -125,10 +129,9 @@ nyc_acs5_zctas_12_20 <- acs5_zctas_12_20 %>%
   mutate(pct_asn_rou = round(tot_asn_rou/renter_occ_units, 2), .after = tot_asn_rou) %>%
   mutate(pct_ltx_rou = round(tot_ltx_rou/renter_occ_units, 2), .after = tot_ltx_rou) %>% 
   mutate(pct_rent = round(renter_occ_units/tot_occ_units, 2), .after = renter_occ_units) %>% 
-  mutate(pct_pov = round(tot_hh_pov/tot_hh, 2), .after = tot_hh_pov)
-  
-  
-  
+  mutate(pct_vac = round(tot_vac_units/tot_occ_units, 2), .after = tot_vac_units) %>% 
+  mutate(pct_pov = round(tot_hh_pov/tot_hh, 2), .after = tot_hh_pov) %>% 
+  fill(med_hh_inc_rou, med_hh_inc_rou_2020_adj, med_yr_moved_in_rou) # impute from prev yr the missing values for 2015 household income & median year moved in ZIP 10006, and 2016 hh inc for ZIP 10464  
 
 # Save -------------------------------------------------------------------------
 

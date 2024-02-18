@@ -143,6 +143,8 @@ est_test <- att_gt(yname = "n_violations_per_1k_units",   # outcome
                    est_method = "dr") # error: "dropped 344 rows from original data due to missing data" (?)
 # Warning: In att_gt(yname = "n_violations_per_1k_units", gname = "treat_yr_mo",  :
 #     Not returning pre-test Wald statistic due to singular covariance matrix
+#     Re-check for duplicated obs & ensure no missing data?
+#     See https://www.sciencedirect.com/science/article/pii/S0047259X17302701 for potential alternative to Wald 
 
 summary(est_test)
 
