@@ -11,8 +11,6 @@
 library(tidyverse) # data manipulation
 library(janitor)   # cleaner variable names
 library(lubridate) # normalizes date objects
-library(plyr) # allows rbind with column fill
-
 
 # Data Import -----------------------------------------------------------------
 
@@ -98,13 +96,23 @@ write_csv(violations, "data_build/cleaner_utility_violations.csv.gz")
 
 # Filter Pre-COVID ZIP-Level Data for Initial Descriptive Stats -------------
 
-corrected_zips <- read.csv("data_build/corrected_zips_2012_2020.csv") # hand corrected by Jiayi/Reba
+corrected_zips <- read.csv("data_build/corrected_zips_2012_2020.csv") %>%  # hand corrected by Jiayi/Reba
+  mutate(inspectiondate = date(inspectiondate),  # keeps date syntax compatible with rest of data after merge
+         inspection_yr = year(inspectiondate),  
+         inspection_mo = month(inspectiondate), 
+         inspection_yr_mo = floor_date(date(inspectiondate), "month")) 
 
 precovid_zip_violations <- violations %>% 
   filter(inspectiondate <= "2020-02-29",
          zip != "2016",
          !is.na(zip)) %>%
-  rbind.fill(corrected_zips)
+  bind_rows(corrected_zips) %>%   # updated from rbind.fill to dplyr syntax so rest of code runs in tidyverse
+  mutate(zip = case_when( # correcting a few further misentered ZIPs discovered during later analysis
+    zip == 10129 ~ 10128, # violation ID 11725954 entered with ZIP typo
+    zip == 10435 ~ 11435, # violation ID 10549312 entered with ZIP typo
+    zip == 11452 ~ 10452, # violation IDs 10599781 & 10599866 entered with ZIP typos
+    TRUE ~ zip
+  ))
 
 for_analysis <- precovid_zip_violations %>% 
   group_by(zip, inspection_yr_mo) %>% 
@@ -112,24 +120,55 @@ for_analysis <- precovid_zip_violations %>%
   ungroup() %>% 
   complete(zip, inspection_yr_mo, fill = list(n_violations = 0)) # expand all 12 annual yearmonth observations for all zip codes, even if no violations reported
 
-# Add ZIP-Level ACS 5-Yr Estimates ------------------------
+# Import ZIP-Level Eviction Counts, Rent Stabilized Unit Counts, and ACS 5-Yr Estimates ------------------------
 
 acs_zcta <- read_csv("data_build/acs5_zctas_12_20_renter_occ_units.csv") %>% 
   rename(zip = GEOID)
 
+evict <- read_csv("data_raw/jan_to_aug_evictions_2017.csv") %>% # 2017 baseline Jan-Aug eviction counts, by DOI and collated in NYC OpenData
+  clean_names %>% 
+  mutate(zip = as.numeric(eviction_postcode), .keep = "unused") %>% 
+  rename(evicts_17 = count)
+
+rs <- read_csv("data_build/rs_17_full.csv") %>%   # baseline 2017 rent-stabilized unit counts, via Furman + Tony
+  mutate(zip = as.numeric(zipcode), .keep = "unused") %>% 
+  rename(rs_17 = rs_17_count)
+
+# Merge/Generate Census, Eviction, & Rent Stabilization Covariates -------------------------------------------------------------
+
 for_analysis <- for_analysis %>% 
   mutate(year = year(inspection_yr_mo)) %>%  
   group_by(zip, inspection_yr_mo) %>% 
-  left_join(acs_zcta, by = c("year", "zip")) %>% 
-  select(-year) %>% 
+  left_join(acs_zcta, by = c("year", "zip")) %>%   # Census covariates
+  left_join(evict, by = "zip") %>%    # eviction covariate
+  left_join(rs, by = "zip") %>%   # rent stabilization covariate 
   mutate(n_violations_per_1k_units = ((n_violations/renter_occ_units)*1000), .after = n_violations) %>% 
+  ungroup() %>% 
+  group_by(zip) %>% 
+  mutate(
+    evict_rate_17 = case_when(
+      year == 2017 ~ (evicts_17/renter_occ_units)),
+    rs_rate_17 = case_when(
+      year == 2017 ~ (rs_17/renter_occ_units))
+  ) %>% 
+  fill(evict_rate_17, rs_rate_17, .direction = "updown") %>% 
+  select(-year) %>% 
+  ungroup()
+
+# Generate UA Treatment Status Indicator ----------------------------------------
+
+for_analysis <- for_analysis %>% 
+  group_by(zip, inspection_yr_mo) %>% 
   left_join(rtc_zips, by = "zip") %>% 
   mutate(
     cohort = replace_na(cohort, 5),
     rtc_treat_date = replace_na(rtc_treat_date, as_date("2021-05-11")), # all ZIPS not in cohorts 1-4 were added to treatment May 2021
     treated = case_when(
       rtc_treat_date > inspection_yr_mo ~ 0,
-      TRUE ~ 1)) 
+      TRUE ~ 1)) %>% 
+  ungroup
+
+
 
 # Save -------------------------------------------------------------------------
 
