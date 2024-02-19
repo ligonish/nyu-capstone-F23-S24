@@ -1,9 +1,7 @@
 Notes for Team
 ================
 
-This is just a scratchpad for all of us for now – I’m going to include a
-runthrough of some of the initial scripts and a few rough violation
-count visuals below. *SL, 02/19/2024*
+*Updated to include Jan/Feb cleaning + analysis, SL 02/19/2024*
 
 ### Data Sources
 
@@ -106,16 +104,20 @@ data for geolocation and/or potential geographic boundary crosswalking.
 
 ### Data Analysis
 
-Most of our work through January and February has focused on - further
-data cleaning to identify and recode ZIP codes misentered by City
-administrators - learning and implementing the logic behind Callaway &
-Sant’Anna’s staggered difference-in-differences model - figuring out the
-syntax requirements and interpretations of Callaway’s accompanying *did*
-R package - researching the Universal Access policy rollout and
-treatment selection criteria in order to refine our covariates -
-refining our timeline boundaries on the basis of that research -
-estimating treatment effects and looking for pretreatment parallel
-trends - visualizing statistical findings
+Most of our work through January and February has focused on:
+
+- further data cleaning to identify and recode ZIP codes misentered by
+  City administrators
+- learning and implementing the logic behind Callaway & Sant’Anna’s
+  staggered difference-in-differences model
+- figuring out the syntax requirements and interpretations of Callaway’s
+  accompanying *did* R package
+- researching the Universal Access policy rollout and treatment
+  selection criteria in order to refine our covariates
+- refining our timeline boundaries on the basis of that research
+- estimating treatment effects and looking for pretreatment parallel
+  trends
+- visualizing statistical findings
 
 This ongoing work, shown in the *05_analysis* script, suggests that the
 first-treated group in the UA rollout may on average have experienced a
@@ -129,13 +131,14 @@ these conclusions to be fully statistically significant.
 
 Since Callaway & Sant’Anna’s model calls for covariates that remind
 constant across multiple periods, we control for baseline covariates
-that align with UA treatment critera, including: - 2017 eviction rate
+that align with UA treatment critera, including: \* 2017 eviction rate
 per ZIP (as total 2017 pending, scheduled, and executed evictions in ZIP
-/ total renter-occupied units in ZIP per 2017 ACS estimate) - 2017 rent
+/ total renter-occupied units in ZIP per 2017 ACS estimate) \* 2017 rent
 stabilization rate per ZIP (as total 2017 rent-stabilized units in ZIP /
-total renter-occupied units in ZIP per 2017 ACS estimate) - 2017 poverty
-rate per ZIP (as number of households in ZIP below 2017 Federal poverty
-line / number of renter-occupied units in ZIP per 2017 ACS estimate)
+total renter-occupied units in ZIP per 2017 ACS estimate) \* 2017
+poverty rate per ZIP (as number of households in ZIP below 2017 Federal
+poverty line / number of renter-occupied units in ZIP per 2017 ACS
+estimate)
 
 *Before* introducing these covariates, the three cohorts who received
 treatment prior to our June 2019 cutoff date do not exhibit parallel
@@ -154,21 +157,23 @@ trends.
 While it’s possible that there simple isn’t a statistically significant
 causal relationship between tenants’ access to eviction protections and
 landlords’ attempts to evict through extralegal means such as heat & hot
-water shutoffs, our current issue may also be caused by the following: -
-Since we have hundreds of time periods but relatively small groups of
-ZIPs within each treatment cohort, it’s possible that lack of
-statistical significance is coming from **small sample size**. While
-time-consuming, we could revisit crosswalking census tract and ZCTA
-boundaries to estimate violation rate at the tract rather than ZIP
-level. - Lack of statistically significant treatment effect may also be
-caused by **misspecified R code**. We’ll look at whether we’ve encoded
-time periods correctly (Callaway’s package requires treatment times to
-be expressed numerically rather than as date objects, which introduces
-some room for coder error in the year_month variable). - Finally, we may
-simply need to **further adjust our covariates** to better isolate
-ATE/ATT across a staggered rollout. - Since we’re pursuing heat & water
-violations as a proxy for illegal evictions, we could also take the more
-drastic measure of changing our outcome variable to a different proxy
-for the same behavior – for instance, rental unit vacancy rate. This
-would, however, require further research to confirm data collection
-reliability.
+water shutoffs, our current issue may also be caused by the following:
+
+- Since we have hundreds of time periods but relatively small groups of
+  ZIPs within each treatment cohort, it’s possible that lack of
+  statistical significance is coming from **small sample size**. While
+  time-consuming, we could revisit crosswalking census tract and ZCTA
+  boundaries to estimate violation rate at the tract rather than ZIP
+  level.
+- Lack of statistically significant treatment effect may also be caused
+  by **misspecified R code**. We’ll look at whether we’ve encoded time
+  periods correctly (Callaway’s package requires treatment times to be
+  expressed numerically rather than as date objects, which introduces
+  some room for coder error in the year_month variable).
+- Finally, we may simply need to **further adjust our covariates** to
+  better isolate ATE/ATT across a staggered rollout.
+- Since we’re pursuing heat & water violations as a proxy for illegal
+  evictions, we could also take the more drastic measure of changing our
+  outcome variable to a different proxy for the same behavior – for
+  instance, rental unit vacancy rate. This would, however, require
+  further research to confirm data collection reliability.
