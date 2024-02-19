@@ -149,9 +149,11 @@ for_analysis <- for_analysis %>%
     evict_rate_17 = case_when(
       year == 2017 ~ (evicts_17/renter_occ_units)),
     rs_rate_17 = case_when(
-      year == 2017 ~ (rs_17/renter_occ_units))
+      year == 2017 ~ (rs_17/renter_occ_units)),
+    pct_pov_17 = case_when(
+      year == 2017 ~ pct_pov)
   ) %>% 
-  fill(evict_rate_17, rs_rate_17, .direction = "updown") %>% 
+  fill(evict_rate_17, rs_rate_17, pct_pov_17, .direction = "updown") %>% 
   select(-year) %>% 
   ungroup()
 
