@@ -147,11 +147,11 @@ for_analysis <- for_analysis %>%
   group_by(zip) %>% 
   mutate(
     evict_rate_17 = case_when(
-      year == 2017 ~ (evicts_17/renter_occ_units)),
+      year == 2017 ~ (evicts_17/renter_occ_units)),   # eviction rate
     rs_rate_17 = case_when(
-      year == 2017 ~ (rs_17/renter_occ_units)),
+      year == 2017 ~ (rs_17/renter_occ_units)),   # rent stabilization rate
     pct_pov_17 = case_when(
-      year == 2017 ~ pct_pov)
+      year == 2017 ~ pct_pov)   # poverty rate
   ) %>% 
   fill(evict_rate_17, rs_rate_17, pct_pov_17, .direction = "updown") %>% 
   select(-year) %>% 

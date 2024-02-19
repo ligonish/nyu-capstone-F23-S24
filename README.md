@@ -3,7 +3,7 @@ Notes for Team
 
 This is just a scratchpad for all of us for now – I’m going to include a
 runthrough of some of the initial scripts and a few rough violation
-count visuals below. *SL, 11/17/2024*
+count visuals below. *SL, 02/19/2024*
 
 ### Data Sources
 
@@ -12,8 +12,17 @@ count visuals below. *SL, 11/17/2024*
 - [ACS 5-yr estimates, 2012-2021](https://walker-data.com/tidycensus/)
 - [NYC Planning PLUTO Archive,
   2012-2021](https://www.nyc.gov/site/planning/data-maps/open-data/bytes-archive.page)
+- [NYC DOI Evictions
+  Data](https://data.cityofnewyork.us/City-Government/Evictions/6z8x-wfk4/about_data)
 - [Uniform Data System Mapper: ZIP to ZCTA
   Crosswalks](https://udsmapper.org/zip-code-to-zcta-crosswalk/)
+- Callaway, Brantly and Pedro H.C. Sant’Anna.
+  [“Difference-in-Differences with Multiple Time
+  Periods”](https://doi.org/10.1016/j.jeconom.2020.12.001). *Journal of
+  Econometrics*, Vol. 225, No. 2, pp. 200-230, 2021.
+- Callaway, Brantly. [“Getting Started with the did
+  Package”](https://bcallaway11.github.io/did/articles/did-basics.html).
+  08-29-2023
 
 ### Dependent Libraries
 
@@ -24,7 +33,8 @@ library(RSocrata)    # pulls from NYC OpenData API
 library(janitor)     # data cleaning & easy table percentages
 library(lubridate)   # date variable normalization
 library(viridis)     # plot color schemes
-library(hrbrthemes)  # plots, but ~a~e~s~t~h~e~t~i~c~    
+library(hrbrthemes)  # plots, but ~a~e~s~t~h~e~t~i~c~ 
+library(did)         # Callaway & Sant'Anna's package implementing their staggered DiD method
 ```
 
 ### Data Structure
@@ -82,7 +92,7 @@ See *scripts/02_clean_violations* for merging in census data by
 ZIP/ZCTA, generating 0/1 treatment indicators, treatment cohort groups,
 and treatment dates.
 
-Lastly, *scripts/03_summary_stats* is a work in progress; here are a few
+See *scripts/03_summary_stats* is a work in progress; here are a few
 very broad count visuals excerpted below.
 
 ![](plots/monthly_counts_geom_col.svg)
@@ -90,3 +100,75 @@ very broad count visuals excerpted below.
 ![](plots/yearly_utility_counts.svg)
 ![](plots/yearly_counts_by_treatment.svg)
 ![](plots/yearly_counts_by_cohort_linechart.svg)
+
+See *scripts/04_pluto_clean* for an import of building-level tax record
+data for geolocation and/or potential geographic boundary crosswalking.
+
+### Data Analysis
+
+Most of our work through January and February has focused on - further
+data cleaning to identify and recode ZIP codes misentered by City
+administrators - learning and implementing the logic behind Callaway &
+Sant’Anna’s staggered difference-in-differences model - figuring out the
+syntax requirements and interpretations of Callaway’s accompanying *did*
+R package - researching the Universal Access policy rollout and
+treatment selection criteria in order to refine our covariates -
+refining our timeline boundaries on the basis of that research -
+estimating treatment effects and looking for pretreatment parallel
+trends - visualizing statistical findings
+
+This ongoing work, shown in the *05_analysis* script, suggests that the
+first-treated group in the UA rollout may on average have experienced a
+slight *increase* in landlord heat & hot water violations after tenants
+gained access to UA, while the next two waves may have experienced a
+slight *decrease* – but our confidence intervals remain too broad for
+these conclusions to be fully statistically significant.
+
+![](plots/att_av_by_grp_with_covars.svg)
+![](plots/att_2012_2019_w_covars_code_screencap.png)
+
+Since Callaway & Sant’Anna’s model calls for covariates that remind
+constant across multiple periods, we control for baseline covariates
+that align with UA treatment critera, including: - 2017 eviction rate
+per ZIP (as total 2017 pending, scheduled, and executed evictions in ZIP
+/ total renter-occupied units in ZIP per 2017 ACS estimate) - 2017 rent
+stabilization rate per ZIP (as total 2017 rent-stabilized units in ZIP /
+total renter-occupied units in ZIP per 2017 ACS estimate) - 2017 poverty
+rate per ZIP (as number of households in ZIP below 2017 Federal poverty
+line / number of renter-occupied units in ZIP per 2017 ACS estimate)
+
+*Before* introducing these covariates, the three cohorts who received
+treatment prior to our June 2019 cutoff date do not exhibit parallel
+pre-treatment trends.
+
+![](plots/ate_2012_2019_wo_covars.svg)
+
+*After* including these covariates, our model continues to suggest that
+treatment cohorts did not exhibit strictly parallel pre-treatment
+trends.
+
+![](plots/ate_2012_2019_with_covars.svg)
+
+### Next Steps & Big Questions
+
+While it’s possible that there simple isn’t a statistically significant
+causal relationship between tenants’ access to eviction protections and
+landlords’ attempts to evict through extralegal means such as heat & hot
+water shutoffs, our current issue may also be caused by the following: -
+Since we have hundreds of time periods but relatively small groups of
+ZIPs within each treatment cohort, it’s possible that lack of
+statistical significance is coming from **small sample size**. While
+time-consuming, we could revisit crosswalking census tract and ZCTA
+boundaries to estimate violation rate at the tract rather than ZIP
+level. - Lack of statistically significant treatment effect may also be
+caused by **misspecified R code**. We’ll look at whether we’ve encoded
+time periods correctly (Callaway’s package requires treatment times to
+be expressed numerically rather than as date objects, which introduces
+some room for coder error in the year_month variable). - Finally, we may
+simply need to **further adjust our covariates** to better isolate
+ATE/ATT across a staggered rollout. - Since we’re pursuing heat & water
+violations as a proxy for illegal evictions, we could also take the more
+drastic measure of changing our outcome variable to a different proxy
+for the same behavior – for instance, rental unit vacancy rate. This
+would, however, require further research to confirm data collection
+reliability.
