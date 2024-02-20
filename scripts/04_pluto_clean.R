@@ -9,6 +9,7 @@
 library(tidyverse)
 library(RSocrata)
 library(here)
+library(readxl)
 
 # API Access -------------------------------------------------------------------
 
@@ -101,3 +102,64 @@ pluto_zip_only <- pluto_clean %>%
 
 write.csv(pluto_zip_only, here("data_build", "pluto_zip_only.csv"))
 
+# Violations by Tract ----------------------------------------------------------
+
+violations <- read_csv("data_raw/utility_violations_2012_onward.csv.gz") %>% 
+  remove_constant() %>% 
+  select(violationid, # these can shift with our analytic needs; just shortening for processing time now
+         buildingid,
+         boroid,
+         boro,
+         housenumber,
+         lowhousenumber,
+         highhousenumber,
+         streetname,
+         zip, 
+         apartment,
+         story,
+         block,
+         lot,
+         class,
+         inspectiondate,
+         ordernumber,
+         novdescription,
+         novtype,
+         rentimpairing,
+         latitude,
+         longitude,
+         censustract,
+         bin,
+         bbl,
+         nta) %>% 
+  mutate(inspectiondate = date(inspectiondate),  # baseline date for each observation; earlier date would require using complaints database instead/as well
+         inspection_yr = year(inspectiondate),  # for manipulation/visualization/interactions  
+         inspection_mo = month(inspectiondate), # allows analysis of seasonal trends and overall more detailed time-constant fixed effects (esp important in staggered DiD)
+         inspection_yr_mo = floor_date(date(inspectiondate), "month")) # we can just concatenate these or use the zoo package for a YYYY_MM format if that winds up being an FE or other explanatory var; this is just for sketching shape of data
+
+# ZIP/Tract Crosswalk
+
+rtc_zips <- read_csv("data_build/rtc_zip_rollout.csv") %>% # Source: Ellen et al (2021), "Early Evidence on Eviction Patterns", pg.8 footnotes
+  clean_names() %>% 
+  mutate(zip = as.numeric(zip)) %>% 
+  rename(rtc_treat_date = date_added) %>% 
+  select(cohort, rtc_treat_date, zip) %>%
+  filter(cohort != 4 & cohort != 5) %>%
+  mutate(treated = 1) %>%
+  select(zip, treated)
+
+zip_tract <- read_xlsx("data_raw/HUD_tract_to_zip_crosswalk_2012_q4.xlsx", col_types = "numeric") %>%
+  filter(TRACT >= "36000000000" & TRACT < "37000000000") %>%
+  mutate(state_code = substr(TRACT, start = 1, stop = 2),
+         county_code = substr(TRACT, start = 3, stop = 5),
+         tract_code = substr(TRACT, start = 6, stop = 11)) %>%
+  filter(county_code %in% c("005", "047", "061", "081", "085")) %>%
+  left_join(rtc_zips, by = c("ZIP" = "zip")) %>%
+  replace(is.na(.), 0) %>%
+  group_by(TRACT) %>%
+  mutate(
+    IMPACTED = n_distinct(treated) > 1,
+    ROWNUM = row_number(),
+    MAX_RES = max(RES_RATIO)
+  ) %>%
+  filter(RES_RATIO == MAX_RES) %>%
+  select(TRACT, ZIP, RES_RATIO, IMPACTED)
