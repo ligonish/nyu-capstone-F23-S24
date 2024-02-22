@@ -159,6 +159,39 @@ acs5_tracts_12_23 <- map_dfr(
   select(-ends_with("M")) %>%  # removing superfluous margin of error estimates
   arrange(GEOID, year) 
 
+acs5_tracts_12_23 <- acs5_tracts_12_23 %>% 
+  rename(tot_units = B25001_001E,
+         tot_occ_units = B25032_001E,
+         tot_vac_units = B25002_003E,
+         renter_occ_units = B25032_013E,
+         tot_hh = B17017_001E,
+         tot_hh_pov = B17017_002E,
+         tot_pop_rou = B25008_003E,
+         med_hh_inc_rou = B25119_003E,
+         med_yr_blt_rou = B25037_003E,
+         med_yr_moved_in_rou = B25039_003E,
+         med_gross_rent = B25064_001E,
+         med_rent_burden = B25071_001E,
+         tot_college_degree_rou = B25013_011E,
+         tot_wh_rou = B25003H_003E,
+         tot_bl_rou = B25003B_003E,
+         tot_asn_rou = B25003D_003E,
+         tot_ltx_rou = B25003I_003E
+  ) %>%  
+  mutate(med_gross_rent_2020_adj = adjust_for_inflation(med_gross_rent, year, "US", to_date = 2020),
+         med_gross_rent_2020_adj = round_to_nearest(med_gross_rent_2020_adj, 1), .after = med_gross_rent) %>% 
+  mutate(med_hh_inc_rou_2020_adj = adjust_for_inflation(med_hh_inc_rou, year, "US", to_date = 2020),
+         med_hh_inc_rou_2020_adj = round_to_nearest(med_hh_inc_rou_2020_adj, 1), .after = med_hh_inc_rou) %>% 
+  mutate(pct_college_deg_rou = round(tot_college_degree_rou/renter_occ_units, 2), .after = tot_college_degree_rou) %>% 
+  mutate(pct_wh_rou = round(tot_wh_rou/renter_occ_units, 2), .after = tot_wh_rou) %>% 
+  mutate(pct_bl_rou = round(tot_bl_rou/renter_occ_units, 2), .after = tot_bl_rou) %>% 
+  mutate(pct_asn_rou = round(tot_asn_rou/renter_occ_units, 2), .after = tot_asn_rou) %>%
+  mutate(pct_ltx_rou = round(tot_ltx_rou/renter_occ_units, 2), .after = tot_ltx_rou) %>% 
+  mutate(pct_rent = round(renter_occ_units/tot_occ_units, 2), .after = renter_occ_units) %>% 
+  mutate(pct_vac = round(tot_vac_units/tot_occ_units, 2), .after = tot_vac_units) %>% 
+  mutate(pct_pov = round(tot_hh_pov/tot_hh, 2), .after = tot_hh_pov) 
+  #fill(med_hh_inc_rou, med_hh_inc_rou_2020_adj, med_yr_moved_in_rou) # impute from prev yr the missing values for 2015 household income & median year moved in ZIP 10006, and 2016 hh inc for ZIP 10464  
+
 
 # Note we'll need to crosswalk census tracts with ZIP and ZCTA so that they merge 
 # seamlessly onto the tract numeration in Housing Maintenance Violation data. 
