@@ -140,26 +140,28 @@ write_csv(nyc_acs5_zctas_12_20, "data_build/acs5_zctas_12_20_renter_occ_units.cs
 
 # By Tract, 2012 - 2020 --------------------------------------------------------
 
-# counties <- c("Bronx", "Kings", "New York", "Queens", "Richmond") # so we don't get the whole of NY state in one file
+counties <- c("Bronx", "Kings", "New York", "Queens", "Richmond") # so we don't get the whole of NY state in one file
 
-# acs5_tracts_12_23 <- map_dfr(
-#  years,
-#  ~ get_acs(
-#    geography = "tract",
-#    state = "NY",
-#    county = counties,
-#    variables = "B25032_013",
-#    year = .x,
-#    survey = "acs5",
-#    geometry = FALSE  # can set to "T" for sf mapping down the line
-#  ),
-#  .id = "year"  
-#) %>%
-#  select(-moe) %>%  
-#  arrange(GEOID, year) 
+acs5_tracts_12_23 <- map_dfr(
+  years,
+  ~ get_acs(
+    geography = "tract",
+    state = "NY",
+    county = counties,
+    variables = census_variables,
+    year = .x,
+    survey = "acs5",
+    output = "wide",
+    geometry = FALSE  # can set to "T" for sf mapping down the line
+  ),
+  .id = "year"  
+) %>%
+  select(-ends_with("M")) %>%  # removing superfluous margin of error estimates
+  arrange(GEOID, year) 
+
 
 # Note we'll need to crosswalk census tracts with ZIP and ZCTA so that they merge 
 # seamlessly onto the tract numeration in Housing Maintenance Violation data. 
 # See https://www.census.gov/geographies/reference-files/time-series/geo/relationship-files.html
 
-# write_csv(acs5_tracts_12_23, "data_build/acs5_tracts_12_23_renter_occ_units.csv")
+write_csv(acs5_tracts_12_23, "data_build/acs5_tracts_12_23_renter_occ_units.csv")
