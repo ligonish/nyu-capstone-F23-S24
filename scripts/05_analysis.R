@@ -14,6 +14,7 @@ library(did)  # Callaway & Sant'Anna's package implementing their staggered DiD
 library(tidyverse) 
 library(janitor)
 library(lubridate)
+library(zoo)   # stores evenly-counted year-month periods as numeric variables
 
 # Data Import -----------------------------------------------------------------
 
@@ -23,18 +24,11 @@ violations <- read_csv("data_build/2012_2020_zip_set_for_analysis.csv.gz")
 # this is messy; will streamline back in cleaning script_02 but just sketching for now
 
 violations <- violations %>% 
-  mutate(
-    inspection_yr_mo = as.character(str_sub(inspection_yr_mo, end = -4)),
-    inspection_yr_mo = str_replace(inspection_yr_mo, "-", "."),
-    inspection_yr_mo = as.numeric(inspection_yr_mo),
-    treat_yr_mo = as.character(str_sub(rtc_treat_date, end = -4)),
-    treat_yr_mo = str_replace(treat_yr_mo, "-", "."),
-    treat_yr_mo = as.numeric(treat_yr_mo),
-    treat_yr_mo = case_when(
-            treat_yr_mo == 2021.05 ~ 0, # sets final cohort as untreated, since we're trimming timeline 
-            TRUE ~ treat_yr_mo),
-  ) %>% 
-  filter(inspection_yr_mo > 2012.12) # HUD doesn't have full set of violations for 2012. 15,480 obs of 27 variables, 2013-2023
+  mutate(inspection_yr_mo = as.yearmon(inspection_yr_mo),
+         treat_yr_mo = as.yearmon(rtc_treat_date)) %>%   # via zoo package, gives evenly-spaced yearmonth increments where january is year.00, feb is year.1/12, march is year.2/12, etc
+  mutate(inspection_yr_mo_num = as.numeric(inspection_yr_mo), .after = inspection_yr_mo) %>% 
+  mutate(treat_yr_mo_num = as.numeric(treat_yr_mo), .after = treat_yr_mo) %>% 
+  filter(inspection_yr_mo >= 2013) # HUD doesn't have full set of violations for 2012. 15,480 obs of 27 variables, 2013-2023
 
 # Check for missing data in newer baseline eviction/poverty/rent stabilization variables ---
 
@@ -82,9 +76,9 @@ rm(og_violations, empties)
 # Group-Time ATE, 2013-2020: No Covariates -----------------------------------------------
 
 est_test <- att_gt(yname = "n_violations_per_1k_units",   # outcome 
-                   gname = "treat_yr_mo",
+                   gname = "treat_yr_mo_num",
                    idname = "zip",
-                   tname = "inspection_yr_mo",
+                   tname = "inspection_yr_mo_num",
                    xformla = ~1, # doing this or leaving blank sets as a constant w/o covars; see "Getting Started"
                    data = violations,
                    allow_unbalanced_panel = TRUE,
@@ -98,7 +92,7 @@ summary(est_test) # not looking statistically significant
 ggdid(est_test,
       title = "Group-Time Average Treatment Effects of Right-to-Counsel on Landlord Maintenance Violations, 2013-2020",
       grtitle = "Received UA",
-      xgap = 50)
+      xgap = 12)
 
 # Event Study w/ Plot 
 # This aggregates the group-time ATEs
@@ -115,9 +109,9 @@ ggdid(group_effects)
 # 2013-2023, but now including covariates --------------------------------------
 
 est_w_covars <- att_gt(yname = "n_violations_per_1k_units",   # outcome 
-                       gname = "treat_yr_mo",
+                       gname = "treat_yr_mo_num",
                        idname = "zip",
-                       tname = "inspection_yr_mo",
+                       tname = "inspection_yr_mo_num",
                        xformla = ~ evict_rate_17 + rs_rate_17 + pct_pov_17, # controlling for baseline 2017 eviction rates, rent-stabilization rates, & percentage below Fed poverty line
                        data = violations,
                        control_group = "notyettreated",
@@ -151,15 +145,12 @@ summary(group_effects) # results not statistically significant
 # Filter out HSTPA-onward observations (seeing what happens if we skip COVID & most of the impact of 2019's legislative changes)
 
 violations_13_19 <- violations %>% 
-  filter(inspection_yr_mo <= 2019.06) %>%  # 13,728 obs
-  mutate(treat_yr_mo = case_when(
-    treat_yr_mo == 2019.12 ~ 0, # sets Dec. 2019 cohort as also "untreated", since we're trimming timeline 
-    TRUE ~ treat_yr_mo))
+  filter(inspection_yr_mo <= 2019.417) 
 
 est_test <- att_gt(yname = "n_violations_per_1k_units",   # outcome 
-                   gname = "treat_yr_mo",
+                   gname = "treat_yr_mo_num",
                    idname = "zip",
-                   tname = "inspection_yr_mo",
+                   tname = "inspection_yr_mo_num",
                    xformla = ~1, # doing this or leaving blank sets as a constant w/o covars; see "Getting Started"
                    data = violations_13_19,
                    allow_unbalanced_panel = TRUE,
@@ -174,7 +165,7 @@ summary(est_test)
 ggdid(est_test,
       title = "Group-Time Average Treatment Effects of Right-to-Counsel on Landlord Maintenance Violations, 2013-2020",
       grtitle = "Received UA",
-      xgap = 50)
+      xgap = 11)
 
 # Event Study w/ Plot 
 # This aggregates the group-time ATEs
@@ -191,9 +182,9 @@ ggdid(group_effects)
 # As above, but now including covariates
 
 est_w_covars <- att_gt(yname = "n_violations_per_1k_units",   # outcome 
-                       gname = "treat_yr_mo",
+                       gname = "treat_yr_mo_num",
                        idname = "zip",
-                       tname = "inspection_yr_mo",
+                       tname = "inspection_yr_mo_num",
                        xformla = ~ evict_rate_17 + rs_rate_17 + pct_pov_17, # controlling for baseline 2017 eviction rates, rent-stabilization rates, & percentage below Fed poverty line
                        data = violations_13_19,
                        control_group = "notyettreated",
