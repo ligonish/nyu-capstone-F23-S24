@@ -179,7 +179,7 @@ group_effects <- aggte(est_test, type = "group")
 summary(group_effects) # results not statistically significant
 ggdid(group_effects)
 
-# As above, but now including covariates
+# 2013-2019, WITH covariates -----------------------------------------
 
 est_w_covars <- att_gt(yname = "n_violations_per_1k_units",   # outcome 
                        gname = "treat_yr_mo_num",
@@ -196,7 +196,7 @@ summary(est_w_covars)
 ggdid(est_w_covars,
       title = "Group-Time Average Treatment Effects of Right-to-Counsel on Landlord Maintenance Violations, 2013-2020",
       grtitle = "Received UA",
-      xgap = 50)
+      xgap = 20)
 
 group_effects <- aggte(est_w_covars, type = "group")
 summary(group_effects) # results not statistically significant 
