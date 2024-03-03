@@ -189,7 +189,7 @@ est_w_covars <- att_gt(yname = "n_violations_per_1k_units",   # outcome
                        data = violations_13_19,
                        control_group = "notyettreated",
                        #base_period = "varying",
-                       #allow_unbalanced_panel = TRUE,
+                       allow_unbalanced_panel = TRUE,
                        est_method = "dr") # dr = doubly robust; ipw = inverse probability weighting; reg = regression 
 # 390 rows dropped due to missing data
 summary(est_w_covars)
@@ -204,7 +204,8 @@ ggdid(group_effects)
 
 group_effects <- aggte(est_w_covars, type = "dynamic")
 summary(group_effects) # results not statistically significant
-ggdid(group_effects)
+ggdid(group_effects,
+      xgap = 20)
 
 group_effects <- aggte(est_w_covars, type = "simple")
 summary(group_effects) # results not statistically significant
