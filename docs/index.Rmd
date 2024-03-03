@@ -22,7 +22,7 @@ options(tigris_use_cache = TRUE) # runs faster
 options(scipen=999) # removes scientific notation in GEOID field etc
 ```
 
-<center>![](plots/zip_treat_map.png){width=50%}![](plots/zip_violations_map.png){width=50%}</center>
+<center>![](../plots/zip_treat_map.png){width=50%}![](../plots/zip_violations_map.png){width=50%}</center>
 
 ## Data Sources
 
@@ -167,7 +167,7 @@ rm(years, census_variables)
 *231,840 obs. of 19 vars* After trimming these to only include ZIP codes within New York City, using a c. 2010 ZIP/ZCTA list downloaded from NYC OpenData:
 
 ```{r}
-zctas <- read_csv("data_build/2010_nyc_zctas.csv") %>% 
+zctas <- read_csv("../data_build/2010_nyc_zctas.csv") %>% 
   mutate(GEOID = as.character(ZCTA))
 ```
 
@@ -216,7 +216,7 @@ rm(zctas)
 ### NYC-DOI Eviction Counts
 
 ```{r}
-evict <- read_csv("data_raw/jan_to_aug_evictions_2017.csv") %>% # 2017 baseline Jan-Aug eviction counts, by DOI and collated in NYC OpenData
+evict <- read_csv("../data_raw/jan_to_aug_evictions_2017.csv") %>% # 2017 baseline Jan-Aug eviction counts, by DOI and collated in NYC OpenData
   clean_names %>% 
   mutate(zip = as.numeric(eviction_postcode), .keep = "unused") %>% 
   rename(evicts_17 = count)
@@ -227,7 +227,7 @@ evict <- read_csv("data_raw/jan_to_aug_evictions_2017.csv") %>% # 2017 baseline 
 ### NYC-JustFix Rent Stabilization Counts
 
 ```{r}
-rs <- read_csv("data_build/rs_17_full.csv") %>%   # baseline 2017 rent-stabilized unit counts, via Furman + Tony
+rs <- read_csv("../data_build/rs_17_full.csv") %>%   # baseline 2017 rent-stabilized unit counts, via Furman + Tony
   mutate(zip = as.numeric(zipcode), .keep = "unused") %>% 
   rename(rs_17 = rs_17_count)
 ```
@@ -237,7 +237,7 @@ rs <- read_csv("data_build/rs_17_full.csv") %>%   # baseline 2017 rent-stabilize
 ### RTC treatment dates & indicators
 
 ```{r, warning = FALSE}
-rtc_zips <- read_csv("data_build/rtc_zip_rollout.csv") %>% # Source: Ellen et al (2021), "Early Evidence on Eviction Patterns", pg.8 footnotes
+rtc_zips <- read_csv("../data_build/rtc_zip_rollout.csv") %>% # Source: Ellen et al (2021), "Early Evidence on Eviction Patterns", pg.8 footnotes
   clean_names() %>% 
   mutate(zip = as.numeric(zip)) %>% 
   rename(rtc_treat_date = date_added) %>% 
@@ -290,7 +290,7 @@ violations <- violations %>%
 Fix missing or mis-entered ZIPs
 
 ```{r}
-corrected_zips <- read.csv("data_build/corrected_zips_2012_2020.csv") %>%  # hand corrected by Jiayi/Reba
+corrected_zips <- read.csv("../data_build/corrected_zips_2012_2020.csv") %>%  # hand corrected by Jiayi/Reba
   mutate(inspectiondate = date(inspectiondate),  # keeps date syntax compatible with rest of data after merge
          inspection_yr = year(inspectiondate),  
          inspection_mo = month(inspectiondate), 
@@ -409,7 +409,8 @@ violations %>%
   adorn_totals(,,,, n_zip_codes) %>% 
   kable(
     caption = 'NYC Right-to-Counsel Treatment Waves Observed in 2013 - 2019 Study Period',
-    col.names = c('Wave', 'RTC Treatment Date', 'ZIPs Treated', 'Months Observed Pre-Treatment', 'Months Observed Post-Treatment')) %>% 
+    col.names = c('Wave', 'RTC Treatment Date', 'ZIPs Treated', 'Months Observed Pre-Treatment', 'Months Observed Post-Treatment'),
+    align = "c") %>% 
     kable_styling(full_width = F, html_font = "Roboto Condensed")
 ```
 
@@ -449,7 +450,8 @@ violations %>%
             ) %>% 
   knitr::kable(digits = 2,
                caption = 'Selected Potential Covariates by RTC Treatment Cohort: NYC Renter-Occupied Units, January 2012 - May 2019',
-               col.names = c("Treatment Cohort", "Violation Rate", "2017 Eviction Rate", "2017 Rent Stabilization Rate", "2017 Poverty Rate", "Median HH Income in 2020 USD", "Rent Burden", "Percent College Graduates", "Percent White", "Percent Black", "Percent Asian", "Percent Latinx")) %>% 
+               col.names = c("Treatment Cohort", "Violation Rate", "2017 Eviction Rate", "2017 Rent Stabilization Rate", "2017 Poverty Rate", "Median HH Income in 2020 USD", "Rent Burden", "Percent College Graduates", "Percent White", "Percent Black", "Percent Asian", "Percent Latinx"),
+               align = "c") %>% 
   kable_styling(full_width = F, html_font = "Roboto Condensed")
   
 ```
@@ -477,7 +479,7 @@ for_maps <- violations %>%
             pct_ltx = mean(pct_ltx_rou, na.rm = TRUE)
             )
 
-write_csv(for_maps, "data_build/for_maps.csv")
+write_csv(for_maps, "../data_build/for_maps.csv")
 
 rm(for_maps)
 ```
@@ -570,14 +572,14 @@ ggdid(group_effects,
   theme(legend.position = "none")
 ```
 
-### CS-DiD: WITH covariates 
+### CS-DiD: With covariates 
 
 ```{r}
 est_w_covars <- att_gt(yname = "n_violations_per_1k_units",  
                        gname = "treat_yr_mo_num",
                        idname = "zip",
                        tname = "inspection_yr_mo_num",
-                       xformla = ~ evict_rate_17 + rs_rate_17 + pct_pov_17, 
+                       xformla = ~ evict_rate_17 + rs_rate_17 + pct_pov_17 + pct_wh_17, 
                        data = violations_13_19,
                        control_group = "notyettreated",
                        allow_unbalanced_panel = TRUE,
@@ -689,7 +691,8 @@ cdp_table %>%
   kable(
     digits = 2,
     caption = 'Cramer von Mises Test of Conditional Parallel Trends Assumption',
-    col.names = c('Covariates', 'Test Statistic', 'Critical Value', 'P-Value')) %>% 
+    col.names = c('Covariates', 'Test Statistic', 'Critical Value', 'P-Value'),
+    align = "c") %>% 
     kable_styling(full_width = F, html_font = "Roboto Condensed")
 ```
 
