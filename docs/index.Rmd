@@ -17,7 +17,9 @@ Project R scripts and data at [github.com/ligonish/nyu-capstone-F23-S24](https:/
 
 ```{r setup, include = FALSE}
 #knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(knitr)
 knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(cache.extra = rand_seed)
 options(tigris_use_cache = TRUE) # runs faster
 options(scipen=999) # removes scientific notation in GEOID field etc
 ```
@@ -85,7 +87,7 @@ v_desc <- c("PROVIDE ADEQUATE SUPPLY OF HOT WATER FOR THE FIXTURES", "PROVIDE AN
  HEATING SYSTEM, OR AN APPROVED SYSTEM OF GAS OR ELECTRICAL HEATING IN GOOD OPERATING CONDITION FOR THE DWELLING UNIT", "PROVIDE AN ADEQUATE SUPPLY OF HEAT FOR THE APARTMENT", "PROVIDE HOT WATER AT ALL HOT WATER FIXTURES")
 
 tibble(v_codes, v_adm, v_desc) %>%
-  kbl(col.names = c('Code', 'Law Violated ', 'HPD Description')) %>% 
+  kbl(col.names = c('Code', 'NYC Law', 'HPD Description')) %>% 
     kable_styling(full_width = F, html_font = "Roboto Condensed")
 
 rm(v_adm, v_codes, v_desc)
@@ -164,14 +166,18 @@ acs5_zctas <- map_dfr(
 rm(years, census_variables)
 ```
 
-*231,840 obs. of 19 vars* After trimming these to only include ZIP codes within New York City, using a c. 2010 ZIP/ZCTA list downloaded from NYC OpenData:
+*231,840 obs. of 19 vars* 
+
+After trimming these to only include ZIP codes within New York City, using a c. 2010 ZIP/ZCTA list downloaded from NYC OpenData:
 
 ```{r}
 zctas <- read_csv("../data_build/2010_nyc_zctas.csv") %>% 
   mutate(GEOID = as.character(ZCTA))
 ```
 
-*216 obs. of 2 vars* We rename the variables more legibly and generate our covariates of interest as rates within each ZIP boundary for easier comparability across ZIPs.
+*216 obs. of 2 vars* 
+
+We rename the variables more legibly and generate our covariates of interest as rates within each ZIP boundary for easier comparability across ZIPs.
 
 ```{r}
 acs5_zctas <- acs5_zctas %>% 
@@ -390,33 +396,46 @@ rm(corrected_zips, evict, rs, rtc_zips)
 
 ## Summary Statistics
 
-Number of Months Treated
-
-```{r}
-violations %>% 
-  group_by(cohort, treated) %>% 
-  summarize(n_months_treated = n_distinct(inspection_yr_mo),
-            n_zip_codes = n_distinct(zip)) %>% 
-  pivot_wider(names_from = treated, values_from = n_months_treated) %>%
-  mutate(rtc_date = case_when(
-    cohort == 1 ~ "Aug. 2017",
-    cohort == 2 ~ "Oct. 2017",
-    cohort == 3 ~ "Nov. 2018",
-    cohort == 4 ~ "Dec. 2019",
-    cohort == 5 ~ "May 2021"), 
-    .after = cohort) %>%
-  replace(is.na(.), 0) %>% 
-  adorn_totals(,,,, n_zip_codes) %>% 
-  kable(
-    caption = 'NYC Right-to-Counsel Treatment Waves Observed in 2013 - 2019 Study Period',
-    col.names = c('Wave', 'RTC Treatment Date', 'ZIPs Treated', 'Months Observed Pre-Treatment', 'Months Observed Post-Treatment'),
-    align = "c") %>% 
-    kable_styling(full_width = F, html_font = "Roboto Condensed")
-```
-
 Table 1
 
 ```{r}
+labels = c("Total violations",
+           "Violations per 1k units",
+           "Total housing units",
+           "Total vacant housing units",
+           "% vacant housing units",
+           "Total occupied housing units",
+           "Total renter-occupied units",
+           "% housing units renter-occupied",
+           "Renter population",
+           "Median renter hh income",
+           "Median renter hh inc in 2020 USD",
+           "Median year built",
+           "Median year moved into unit",
+           "Median gross rent",
+           "Median gross rent in 2020 USD",
+           "Median rent burden",
+           "Total renter householders with college degree",
+           "% renter householders with college degree",
+           "Total white renter householders",
+           "% white renter householders",
+           "Total Black renter householders",
+           "% Black renter householders",
+           "Total Asian renter householders",
+           "% Asian renter householders",
+           "Total Hispanic/Latinx renter householders",
+           "% Hispanic/Latinx renter householders",
+           "Total households",
+           "Total hh below Federal poverty line",
+           "% hh below Federal poverty line",
+           "Total evictions in 2017",
+           "Total rent-stabilized units in 2017",
+           "% renter-occupied unit evictions in 2017",
+           "% renter-occupied units rent-stabilized in 2017",
+           "% hh below Federal poverty line in 2017",
+           "% white renter householders in 2017",
+           "")
+
 violations %>% 
   ungroup() %>% 
   mutate(cohort = factor(cohort),
@@ -424,9 +443,12 @@ violations %>%
   st(group = 'cohort',
      group.test = T,
      col.align = 'center',
+     labels = labels,
      title = 'Table 1. Summary Statistics by RTC Treatment Cohort: NYC Renter-Occupied Units, January 2012 - May 2019',
      out = 'kable') %>% 
-  kable_styling(full_width = F, html_font = "Roboto Condensed")
+  kable_styling(full_width = F, 
+                html_font = "Roboto Condensed",
+                bootstrap_options = c("condensed", "striped"))
 ```
 
 Key Covariate Summaries, by Cohort (to highlight heterogeneity)
@@ -462,6 +484,7 @@ Try graphing these?
 
 ```
 
+
 ```{r}
 for_maps <- violations %>% 
   group_by(cohort, zip) %>%
@@ -482,6 +505,30 @@ for_maps <- violations %>%
 write_csv(for_maps, "../data_build/for_maps.csv")
 
 rm(for_maps)
+```
+
+Table 2. Number of Months Treated, by RTC Cohort
+
+```{r}
+violations %>% 
+  group_by(cohort, treated) %>% 
+  summarize(n_months_treated = n_distinct(inspection_yr_mo),
+            n_zip_codes = n_distinct(zip)) %>% 
+  pivot_wider(names_from = treated, values_from = n_months_treated) %>%
+  mutate(rtc_date = case_when(
+    cohort == 1 ~ "Aug. 2017",
+    cohort == 2 ~ "Oct. 2017",
+    cohort == 3 ~ "Nov. 2018",
+    cohort == 4 ~ "Dec. 2019",
+    cohort == 5 ~ "May 2021"), 
+    .after = cohort) %>%
+  replace(is.na(.), 0) %>% 
+  adorn_totals(,,,, n_zip_codes) %>% 
+  kable(
+    caption = 'Table 2. NYC Right-to-Counsel Treatment Waves Observed in 2013 - 2019 Study Period',
+    col.names = c('Wave', 'RTC Treatment Date', 'ZIPs Treated', 'Months Observed Pre-Treatment', 'Months Observed Post-Treatment'),
+    align = "c") %>% 
+    kable_styling(full_width = F, html_font = "Roboto Condensed")
 ```
 
 ## Data Analysis
@@ -560,12 +607,12 @@ ggdid(event_study,
 #### Overall Group Effects of Participating in Treatment (No Covariates)
 
 ```{r}
-group_effects <- aggte(est_test, type = "group")
-summary(group_effects) 
+group_fx_no_covars <- aggte(est_test, type = "group")
+summary(group_fx_no_covars) 
 ```
 Overall Group Effects Plot (No Covariates)
 ```{r}
-ggdid(group_effects,
+ggdid(group_fx_no_covars,
       title = "Average Effect by Group (No Covariates)",
       theming = FALSE) +
   theme_ipsum_rc(grid = F) +
@@ -619,19 +666,58 @@ ggdid(group_effects,
 ```
 
 ```{r}
-group_effects <- aggte(est_w_covars, type = "group")
-summary(group_effects)
+group_fx_w_covars <- aggte(est_w_covars, type = "group")
+summary(group_fx_w_covars)
 ```
 
 ```{r}
-ggdid(group_effects,
+ggdid(group_fx_w_covars,
       title = "Average Effect by Group (With Covariates)",
       theming = FALSE) +
   theme_ipsum_rc(grid = F) +
   theme(legend.position = "none")
 ```
 
-### Parallel Trends Test
+### Aggregated Group Effects Comparison Tables
+
+```{r}
+t3a <- tidy(group_fx_no_covars) %>% 
+  select(-c(type, term, point.conf.low, point.conf.high)) %>% 
+  mutate(group = str_replace_all(group, c("Average" = "All Groups", "2017.58" = "Cohort 1", "2017.75" = "Cohort 2", "2018.83" = "Cohort 3")))
+
+t3b <- tidy(group_fx_w_covars) %>% 
+  select(-c(type, term, point.conf.low, point.conf.high)) %>% 
+  mutate(group = str_replace_all(group, c("Average" = "All Groups", "2017.58" = "Cohort 1", "2017.75" = "Cohort 2", "2018.83" = "Cohort 3")))
+```
+
+```{r}
+knitr::kables(
+  list(
+    kable(
+      t3a, 
+      col.names = NULL,
+      digits = 4,
+      valign = 't') %>% 
+      add_header_above(c('Group', 'ATT', 'Std. Error', '95% Confidence Band' = 2)) %>%
+      add_header_above(c(' ', 'Without Covariates' = 3)) %>%
+      add_footnote(c("Signif. codes: '*' = confidence band does not cover 0", "Control Groups: Not Yet Treated, Anticipation Periods: 0", "Estimation Method: Doubly Robust"), notation = "none") %>% 
+      kable_styling(),
+    kable(t3b,
+          col.names = NULL,
+          digits = 4,
+          valign = 't') %>% 
+      add_header_above(c('Group', 'ATT', 'Std. Error', '95% Confidence Band' = 2)) %>%
+      add_header_above(c(' ', 'With Covariates' = 3)) %>%
+      kable_styling()
+  ),
+  caption = 'Table 3. Aggregated Group-Specific Treatment Effects'
+) %>% 
+  kable_styling(full_width = F, 
+                  html_font = "Roboto Condensed")
+
+```
+
+### Parallel Trends "Test"
 
 via [Callaway's documentation](https://cran.r-project.org/web/packages/did/vignettes/pre-testing.html): "The did package contains an additional pre-test for the conditional parallel trends assumption in the conditional_did_pretest function."
 
@@ -690,9 +776,10 @@ cdp_table <- as.data.frame(do.call(cbind, cdp_wo_covars)) %>%
 cdp_table %>% 
   kable(
     digits = 2,
-    caption = 'Cramer von Mises Test of Conditional Parallel Trends Assumption',
+    caption = 'Table 4. Cramer von Mises Test Results',
     col.names = c('Covariates', 'Test Statistic', 'Critical Value', 'P-Value'),
-    align = "c") %>% 
+    align = "l") %>% 
+  add_footnote(c("Callaway and Sant'Anna propose the Cramer von Mises or Kolgorov-Smirnov-type integrated moments test as one tool for assessing whether the conditional parallel trends assumption might hold for all groups in all pre-treatment periods. See https://search.r-project.org/CRAN/refmans/did/html/conditional_did_pretest.html and Section 4 of Callaway & Sant'Anna (2020)."), notation = "none") %>% 
     kable_styling(full_width = F, html_font = "Roboto Condensed")
 ```
 
