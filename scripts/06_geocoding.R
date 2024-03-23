@@ -6,10 +6,11 @@
 
 # Dependent Packages ----------------------------------------------------------
 
-library(tidyverse)  # cleaner data manipulation
-library(RSocrata)   # pulls from NYC OpenData API
-library(janitor)    # cleaner variable names
-library(glue)       # easier than paste0
+library(tidyverse)     # cleaner data manipulation
+library(RSocrata)      # pulls from NYC OpenData API
+library(janitor)       # cleaner variable names
+library(glue)          # easier than paste0
+library(campfin)       # normalize address spellings
 library(tidygeocoder)  # geocodes by connecting to US Census Bureau API, Geocodio, OSM, and a couple other options
 
 # Load 2010 <--> 2020 Census tract relationship files --------------------------
@@ -20,6 +21,7 @@ tracts_20_10 <- read.table("data_raw/census_ny_2020_to_2010_tract_relationships.
   mutate(census_tract_10 = str_sub(geoid_tract_10, -6, -1),
          census_tract_20 = str_sub(geoid_tract_20, -6, -1))
 
+# GEOCODE VIOLATIONS -----------------------------------------------------------
 # Generate full street addresses for Housing Maintenance Violations data -------
 
 raw_lat_long <- read_csv("data_raw/utility_violations_2012_onward.csv.gz") %>% 
@@ -136,8 +138,7 @@ zip_tract <- read_xlsx("data_raw/HUD_tract_to_zip_crosswalk_2012_q4.xlsx", col_t
 write_csv(zip_tract, "data_build/tb_tract_zip_assignments.csv")
 
 
-
-
+# GEOCODE EVICTIONS ------------------------------------------------------------
 
 # Get 2017 eviction data -------------------------------------------------------
 
@@ -148,20 +149,76 @@ ev_url <- "https://data.cityofnewyork.us/resource/6z8x-wfk4.json?$where= execute
 evictions <- read.socrata(url = ev_url, 
                           app_token = token) %>% 
   clean_names() %>% 
-  select(docket_number, executed_date, borough, census_tract)   # 13,601 obs, 4 vars
+  select(docket_number, executed_date, borough, census_tract, eviction_address, eviction_zip, latitude, longitude)   # 13,601 obs, 8 vars
 
+# Save
 
-# Collapse to eviction totals by tract -----------------------------------------
+write_csv(evictions, "data_raw/evictions_2017.csv")
+
+evictions <- read_csv("data_raw/evictions_2017.csv")
+
+# Geocode eviction addresses ---------------------------------------------------
+
+# Generate full street address
 
 evictions <- evictions %>% 
-  group_by(borough, census_tract) %>%    # including both since some tract numbers are repeated in different boroughs
-  summarize(n_evictions = n_distinct(docket_number)) %>% 
-  mutate(county_fips = case_when(
-    borough == 'BROOKLYN' ~ '047',
-    borough == 'BRONX' ~ '005',
-    borough == 'MANHATTAN' ~ '061',
-    borough == 'QUEENS' ~ '081',
-    borough == 'STATEN ISLAND' ~ '085'
-  ), .before = census_tract)   # 1,765 of 4 obs
+  mutate(clean_address = normal_address(eviction_address)) %>% 
+  mutate(address = paste(clean_address, eviction_zip, sep = ", NEW YORK, NY ")) #13601 obs of 9 variables
 
+# NB: all these addresses are messy af. we have entries like "STREE T", "ST.", "ST" for "STREET", as well as tons of added notes in the address field ("ENTIRE BASEMENT", "FRONT TWO BEDROOMS SHARING", etc.)
+
+# Divide evictions data into two <= 10k-obs chunks -----------------------------
+
+# NB: Census geocoder will only accept 10,000 rows at a time, and this is a 
+# memory-hungry process generally. Here, I pull only the distinct building street 
+# addresses from all 104,050 unique violations, then split that set into 
+
+evictions_01 <- evictions %>%
+  distinct(address) %>%    #10,476 obs
+  slice(1:10000)   # 10,000 rows
+
+evictions_02 <- evictions %>%
+  distinct(address) %>%    
+  slice(10001:10476) #476 rows
+
+# Geocode evictions data -------------------------------------------------------
+
+# Batch 1/2
+
+geocoded_ev_01 <- evictions_01 %>% 
+  geocode(address = address,
+          lat = 'latitude',
+          long = 'longitude',
+          method = "census",
+          full_results = TRUE,
+          api_options = list(census_return_type = "geographies")) %>% 
+  rename(census_tract_20 = census_tract) %>% 
+  select(address, county_fips, census_tract_20)
+
+# Batch 2/2
+
+geocoded_ev_02 <- evictions_02 %>% 
+  geocode(address = address,
+          lat = 'latitude',
+          long = 'longitude',
+          method = "census",
+          full_results = TRUE,
+          api_options = list(census_return_type = "geographies")) %>% 
+  rename(census_tract_20 = census_tract) %>% 
+  select(address, county_fips, census_tract_20)
+
+# Stick both geocoded eviction sets back together!
+
+geocoded_ev <- geocoded_ev_01 %>% 
+  bind_rows(list(geocoded_ev_02)) #10,476 obs of 3 variables
+
+# Add a full-length GEOID (c. 2020 tract numeration version)
+
+geocoded_ev <- geocoded_ev %>% 
+  mutate(geoid_tract_20 = glue("36{county_fips}{census_tract_20}")) # 10,476 obs of 4 variables
+
+
+# Save! ------------------------------------------------------------------------
+
+write_csv(geocoded_ev, "data_build/geocoded_evictions.csv")
 
