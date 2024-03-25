@@ -8,6 +8,7 @@
 
 library(tidyverse)     # cleaner data manipulation
 library(RSocrata)      # pulls from NYC OpenData API
+library(readxl)        # reads Excel files
 library(janitor)       # cleaner variable names
 library(glue)          # easier than paste0
 library(campfin)       # normalize address spellings
@@ -129,7 +130,7 @@ zip_tract <- read_xlsx("data_raw/HUD_tract_to_zip_crosswalk_2012_q4.xlsx", col_t
     IMPACTED = n_distinct(treated) > 1,
     ROWNUM = row_number(),
     MAX_RES = max(RES_RATIO)
-  ) %>%
+  ) %>% 
   filter(RES_RATIO == MAX_RES) %>%
   select(TRACT, ZIP, RES_RATIO, IMPACTED)
 
