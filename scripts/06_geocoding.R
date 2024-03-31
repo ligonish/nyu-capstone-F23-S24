@@ -25,10 +25,69 @@ tracts_20_10 <- read.table("data_raw/census_ny_2020_to_2010_tract_relationships.
 # GEOCODE VIOLATIONS -----------------------------------------------------------
 # Generate full street addresses for Housing Maintenance Violations data -------
 
-raw_lat_long <- read_csv("data_raw/utility_violations_2012_onward.csv.gz") %>% 
-  select(violationid, housenumber, streetname, zip, latitude, longitude) %>% 
+raw_lat_long <- read_csv("data_raw/utility_violations_2012_onward.csv.gz") %>%    
+  select(violationid, boroid, censustract, housenumber, streetname, zip, latitude, longitude) %>% 
   mutate(address = paste(housenumber, streetname), .after = zip) %>% 
-  mutate(address = paste(address, zip, sep = ", NEW YORK, NY "))   #104,050 obs of 7 vars
+  mutate(
+    address = str_replace_all(address, "HOR HARDING EXPRESSWAY SR NORTH",
+                              "HORACE HARDING EXPY"),
+    address = str_replace_all(address, "HOR HARDING EXPRESSWAY SR SOUTH",
+                              "HORACE HARDING EXPY"),
+    address = str_replace_all(address, "ST NICHOLAS PLACE",
+                              "SAINT NICHOLAS PL"),
+    address = str_replace_all(address, "(?<=[:space:])9 AVENUE",
+                              "9TH AVENUE"),
+    address = str_replace_all(address, "WEST 181 STREET",
+                              "W 181ST ST"),
+    address = str_replace_all(address, "FREDERICK DOUGAL",
+                              "FREDERICK DOUGLASS"),
+    address = str_replace_all(address, "MANH(?=[:space:])",
+                              "MANHATTAN"),
+    address = str_replace_all(address, "EAST 6(?=[:space:])",
+                              "EAST 6TH"),
+    address = str_replace_all(address, "EAST 6(?=[:space:])",
+                              "EAST 6TH"),
+    address = str_replace_all(address, "EAST 12(?=[:space:])",
+                              "EAST 12TH"),
+    address = str_replace_all(address, "EAST 13(?=[:space:])",
+                              "EAST 13TH"),
+    address = str_replace_all(address, "EAST 14(?=[:space:])",
+                              "EAST 14TH"),
+    address = str_replace_all(address, "EAST 15(?=[:space:])",
+                              "EAST 15TH"),
+    address = str_replace_all(address, "EAST 31(?=[:space:])",
+                              "EAST 31ST"),
+    address = str_replace_all(address, "EAST 39(?=[:space:])",
+                              "EAST 39TH"),
+    address = str_replace_all(address, "EAST 57(?=[:space:])",
+                              "EAST 57TH"),
+    address = str_replace_all(address, "EAST 132(?=[:space:])",
+                              "EAST 132ND"),
+    address = str_replace_all(address, "EAST 174(?=[:space:])",
+                              "EAST 174TH"),
+    address = str_replace_all(address, "EAST 176(?=[:space:])",
+                              "EAST 176TH"),
+    address = str_replace_all(address, "EAST 187(?=[:space:])",
+                              "EAST 187TH"),
+    address = str_replace_all(address, "EAST 238(?=[:space:])",
+                              "EAST 238TH"),
+    address = str_replace_all(address, "MC BRIDE",
+                              "MCBRIDE"),
+    address = str_replace_all(address, "ADAM C POWELL BOULEVARD",
+                              "ADAM CLAYTON POWELL JR BLVD"),
+    address = str_replace_all(address, "ADAM C POWELL JR BOULEVARD",
+                              "ADAM CLAYTON POWELL JR BLVD"),
+    address = str_replace_all(address, "HUTCH RIVER",
+                              "HUTCHINSON RIVER"),
+    address = str_replace_all(address, "AVENUE",
+                              "AVE"),
+    address = str_replace_all(address, "STREET",
+                              "ST"),
+    address = str_replace_all(address, "PARKWAY",
+                              "PKWY"),
+    address = str_replace_all(address, "BOULEVARD",
+                              "BLVD")) %>% 
+  mutate(state = "NY")
 
 write_csv(raw_lat_long, "data_build/violation_ids_lats_longs_12_23.csv")
 
@@ -40,15 +99,15 @@ write_csv(raw_lat_long, "data_build/violation_ids_lats_longs_12_23.csv")
 # addresses from all 104,050 unique violations, then split that set into 
 
 addresses_01 <- raw_lat_long %>%
-  distinct(address) %>%    #28,924 obs
+  distinct(address, .keep_all = T) %>%    #28,924 obs
   slice(1:10000)   # 10,000 rows
 
 addresses_02 <- raw_lat_long %>%
-  distinct(address) %>%    
+  distinct(address, .keep_all = T) %>%    
   slice(10001:20000) #10,000 rows
 
 addresses_03 <- raw_lat_long %>%
-  distinct(address) %>%    
+  distinct(address, .keep_all = T) %>%    
   slice(20001:28924) #8,924 rows
 
 # Geocode Housing Maintenance Violations data ----------------------------------
@@ -56,55 +115,91 @@ addresses_03 <- raw_lat_long %>%
 # Batch 1/3
 
 geocoded_addr_01 <- addresses_01 %>% 
-  geocode(address = address,
+  geocode(street = 'address',
+          state = 'state',
+          postalcode = 'zip',
           lat = 'latitude',
           long = 'longitude',
           method = "census",
           full_results = TRUE,
           api_options = list(census_return_type = "geographies")) %>% 
   rename(census_tract_20 = census_tract) %>% 
-  select(address, county_fips, census_tract_20)
+  select(violationid, boroid, address, zip, county_fips, censustract, census_tract_20)
 
 # Batch 2/3
 
 geocoded_addr_02 <- addresses_02 %>% 
-  geocode(address = address,
+  geocode(street = 'address',
+          state = 'state',
+          postalcode = 'zip',
           lat = 'latitude',
           long = 'longitude',
           method = "census",
           full_results = TRUE,
           api_options = list(census_return_type = "geographies")) %>% 
   rename(census_tract_20 = census_tract) %>% 
-  select(address, county_fips, census_tract_20)
+  select(violationid, boroid, address, zip, county_fips, censustract, census_tract_20)
 
 # Batch 3/3
 
 geocoded_addr_03 <- addresses_03 %>% 
-  geocode(address = address,
+  geocode(street = 'address',
+          state = 'state',
+          postalcode = 'zip',
           lat = 'latitude',
           long = 'longitude',
           method = "census",
           full_results = TRUE,
           api_options = list(census_return_type = "geographies")) %>% 
   rename(census_tract_20 = census_tract) %>% 
-  select(address, county_fips, census_tract_20)
+  select(violationid, boroid, address, zip, county_fips, censustract, census_tract_20)
 
 # Stick all three geocoded violations addresses back together!
 
 geocoded <- geocoded_addr_01 %>% 
   bind_rows(list(geocoded_addr_02, geocoded_addr_03))
 
-
 # Add a full-length GEOID (c. 2020 tract numeration version)
 
 geocoded <- geocoded %>% 
   mutate(geoid_tract_20 = glue("36{county_fips}{census_tract_20}"))
 
+rm(addresses_01, addresses_02, addresses_03, geocoded_addr_01, geocoded_addr_02, geocoded_addr_03)
+
+# Check for ungeocoded violation rows ------------------------------------------
+
+uncoded_violations <- geocoded %>% 
+  filter(is.na(census_tract_20)) %>% 
+  select(-county_fips)   # 197 addresses weren't geocoded (of 28,903 distinct addresses, so less than 1%)
+
+# Use OpenData City Planning tract key on the remaining 197
+# See https://www.nyc.gov/site/planning/planning-level/nyc-population/nyc-population-geographic-relationships.page
+
+tract_key <- read_excel("data_raw/nyc_2020_census_tract_nta_cdta_relationships.xlsx") %>% 
+  clean_names() %>% 
+  select(geoid, boro_code, ct_label) %>% 
+  rename(censustract = ct_label,
+         boroid = boro_code) %>% 
+  mutate(censustract = str_replace_all(censustract, "[:punct:]",
+                                   ""))
+
+geocoded <- geocoded %>% 
+  mutate(censustract = as.character(censustract)) %>% 
+  left_join(tract_key, by = c('boroid', 'censustract'), relationship = 'many-to-many') %>%  
+  mutate(geoid = case_when(
+    is.na(geoid) ~ geoid_tract_20,
+          TRUE ~ geoid)
+  ) %>% 
+  mutate(geoid = na_if(geoid, "36NANA")) # 
+
+uncoded_violations <- geocoded %>% 
+  filter(is.na(geoid))  # 31 of 28,903 addresses don't have a geoid
+
 
 # Save! ------------------------------------------------------------------------
 
 write_csv(geocoded, "data_build/geocoded_violation_addresses.csv")
-
+write_csv(uncoded_violations, "data_build/uncoded_violations.csv")
 
 # Assign "treatment" at the tract level using Tony's code ----------------------
 
@@ -156,30 +251,48 @@ evictions <- read.socrata(url = ev_url,
 
 write_csv(evictions, "data_raw/evictions_2017.csv")
 
-evictions <- read_csv("data_raw/evictions_2017.csv")
-
 # Geocode eviction addresses ---------------------------------------------------
+
+# Generate borid variable to merge with Planning Dept key
+
+evictions <- read_csv("data_raw/evictions_2017.csv") %>% 
+  mutate(boroid = case_when(
+    borough == "MANHATTAN" ~ 1,
+    borough == "BRONX" ~ 2,
+    borough == "BROOKLYN" ~ 3,
+    borough == "QUEENS" ~ 4,
+    borough == "STATEN ISLAND" ~ 5
+  ), .after = borough) %>% 
+  rename(censustract = census_tract) %>% 
+  mutate(state = "NY")
 
 # Generate full street address
 
 evictions <- evictions %>% 
-  mutate(clean_address = normal_address(eviction_address)) %>% 
-  mutate(address = paste(clean_address, eviction_zip, sep = ", NEW YORK, NY ")) #13601 obs of 9 variables
+  mutate(address = normal_address(eviction_address)) %>% 
+  mutate(
+    address = str_replace_all(address, "STREE T|S TREET|STRE ET|ST REET|STR EET|STREE(?=[:punct:])",
+                              "ST"),
+    address = str_replace_all(address, "A VENUE|AV ENUE|AVE NUE|AVEN UE|AVENU E|AV ENUE|AV |AVE ",
+                              "AVE"),
+    address = str_replace_all(address, "P ARKWAY|PA RKWAY|PAR KWAY|PARKW AY|PKWY",
+                              "PKWY"),
+    address = str_replace_all(address, "CONC OURSE",
+                              "CONCOURSE"))
 
 # NB: all these addresses are messy af. we have entries like "STREE T", "ST.", "ST" for "STREET", as well as tons of added notes in the address field ("ENTIRE BASEMENT", "FRONT TWO BEDROOMS SHARING", etc.)
 
 # Divide evictions data into two <= 10k-obs chunks -----------------------------
 
 # NB: Census geocoder will only accept 10,000 rows at a time, and this is a 
-# memory-hungry process generally. Here, I pull only the distinct building street 
-# addresses from all 104,050 unique violations, then split that set into 
+# memory-hungry process generally. 
 
 evictions_01 <- evictions %>%
-  distinct(address) %>%    #10,476 obs
+  distinct(address, .keep_all = T) %>%    #10,476 obs
   slice(1:10000)   # 10,000 rows
 
 evictions_02 <- evictions %>%
-  distinct(address) %>%    
+  distinct(address, .keep_all = T) %>%    
   slice(10001:10476) #476 rows
 
 # Geocode evictions data -------------------------------------------------------
@@ -187,26 +300,30 @@ evictions_02 <- evictions %>%
 # Batch 1/2
 
 geocoded_ev_01 <- evictions_01 %>% 
-  geocode(address = address,
+  geocode(street = 'address',
+          state = 'state',
+          postalcode = 'eviction_zip',
           lat = 'latitude',
           long = 'longitude',
           method = "census",
           full_results = TRUE,
           api_options = list(census_return_type = "geographies")) %>% 
   rename(census_tract_20 = census_tract) %>% 
-  select(address, county_fips, census_tract_20)
+  select(address, county_fips, boroid, censustract, census_tract_20)
 
 # Batch 2/2
 
 geocoded_ev_02 <- evictions_02 %>% 
-  geocode(address = address,
+  geocode(street = 'address',
+          state = 'state',
+          postalcode = 'eviction_zip',
           lat = 'latitude',
           long = 'longitude',
           method = "census",
           full_results = TRUE,
           api_options = list(census_return_type = "geographies")) %>% 
   rename(census_tract_20 = census_tract) %>% 
-  select(address, county_fips, census_tract_20)
+  select(address, county_fips, boroid, censustract, census_tract_20)
 
 # Stick both geocoded eviction sets back together!
 
@@ -216,10 +333,23 @@ geocoded_ev <- geocoded_ev_01 %>%
 # Add a full-length GEOID (c. 2020 tract numeration version)
 
 geocoded_ev <- geocoded_ev %>% 
-  mutate(geoid_tract_20 = glue("36{county_fips}{census_tract_20}")) # 10,476 obs of 4 variables
+  mutate(geoid_tract_20 = glue("36{county_fips}{census_tract_20}")) 
 
+# Handle still-missing addresses with Planning key
+
+geocoded_ev <- geocoded_ev %>% 
+  mutate(censustract = as.character(censustract)) %>% 
+  left_join(tract_key, by = c('boroid', 'censustract'), relationship = 'many-to-many') %>%  
+  mutate(geoid = case_when(
+    is.na(geoid) ~ geoid_tract_20,
+    TRUE ~ geoid)
+  ) %>% 
+  mutate(geoid = na_if(geoid, "36NANA")) # 
+
+uncoded_evictions <- geocoded_ev %>% 
+  filter(is.na(geoid))  # 137 of 10,433 distinct addresses don't have a geoid
 
 # Save! ------------------------------------------------------------------------
 
 write_csv(geocoded_ev, "data_build/geocoded_evictions.csv")
-
+write_csv(uncoded_evictions, "data_build/uncoded_evictions.csv")
