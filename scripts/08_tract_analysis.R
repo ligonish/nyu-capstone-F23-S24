@@ -8,6 +8,8 @@
 # Resources
 # See https://bcallaway11.github.io/did/articles/did-basics.html (2023-08-29)
 
+options(scipen=999) # removes scientific notation in GEOID field etc
+
 # Dependent Packages ----------------------------------------------------------
 
 library(did)  # Callaway & Sant'Anna's package implementing their staggered DiD
@@ -31,7 +33,7 @@ violations <- violations %>%
   mutate(treat_yr_mo_zero = case_when(
     treat_yr_mo == "May 2021" ~ as.numeric(0),
     treat_yr_mo == "Dec 2019" ~ as.numeric(0),
-    TRUE ~ treat_yr_mo_num)) %>%   # 160,391 obs. of 44 variables
+    TRUE ~ treat_yr_mo_num)) %>%      # 160,391 obs. of 44 variables
   mutate_all(~ifelse(is.nan(.), NA, .)) %>% 
   mutate_all(~ifelse(is.infinite(.), NA, .))  # converts NaN & infinite values to NA, since -did- package can't parse the former as the latter
 
@@ -109,7 +111,7 @@ est_w_covars <- att_gt(yname = "n_violations_per_1k_units",
                        idname = "geoid",
                        tname = "inspection_yr_mo_num",
                        xformla = ~ evict_rate_17 + rs_rate_17 + pct_pov_17, 
-                       data = violations,
+                       data = maj_poc,
                        control_group = "notyettreated",
                        allow_unbalanced_panel = TRUE,
                        est_method = "dr") 
