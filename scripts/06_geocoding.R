@@ -162,39 +162,38 @@ geocoded <- geocoded_addr_01 %>%
 # Add a full-length GEOID (c. 2020 tract numeration version)
 
 geocoded <- geocoded %>% 
-  mutate(geoid_tract_20 = glue("36{county_fips}{census_tract_20}"))
+  mutate(geoid = glue("36{county_fips}{census_tract_20}"),
+         geoid = na_if(geoid, "36NANA")) 
 
 rm(addresses_01, addresses_02, addresses_03, geocoded_addr_01, geocoded_addr_02, geocoded_addr_03)
 
 # Check for ungeocoded violation rows ------------------------------------------
 
 uncoded_violations <- geocoded %>% 
-  filter(is.na(census_tract_20)) %>% 
+  filter(is.na(geoid)) %>% 
   select(-county_fips)   # 197 addresses weren't geocoded (of 28,903 distinct addresses, so less than 1%)
 
-# Use OpenData City Planning tract key on the remaining 197
-# See https://www.nyc.gov/site/planning/planning-level/nyc-population/nyc-population-geographic-relationships.page
+# Read in NYC Planning's tract key to help fill in blanks (note: Planning uses decimals in a way inconsistent w this set's tract numeration, so not all will merge)
 
 tract_key <- read_excel("data_raw/nyc_2020_census_tract_nta_cdta_relationships.xlsx") %>% 
   clean_names() %>% 
   select(geoid, boro_code, ct_label) %>% 
   rename(censustract = ct_label,
-         boroid = boro_code) %>% 
-  mutate(censustract = str_replace_all(censustract, "[:punct:]",
-                                   ""))
+         boroid = boro_code)
 
 geocoded <- geocoded %>% 
+  mutate(geoid_tract_20 = as.character(geoid)) %>%
+  select(-geoid) %>% 
   mutate(censustract = as.character(censustract)) %>% 
-  left_join(tract_key, by = c('boroid', 'censustract'), relationship = 'many-to-many') %>%  
+  left_join(tract_key, by = c('boroid', 'censustract')) %>%  
   mutate(geoid = case_when(
     is.na(geoid) ~ geoid_tract_20,
-          TRUE ~ geoid)
+    TRUE ~ geoid)
   ) %>% 
-  mutate(geoid = na_if(geoid, "36NANA")) # 
+  mutate(geoid = na_if(geoid, "36NANA"))
 
 uncoded_violations <- geocoded %>% 
-  filter(is.na(geoid))  # 31 of 28,903 addresses don't have a geoid
-
+  filter(is.na(geoid))  # down to 62 from 197
 
 # Save! ------------------------------------------------------------------------
 
@@ -333,21 +332,29 @@ geocoded_ev <- geocoded_ev_01 %>%
 # Add a full-length GEOID (c. 2020 tract numeration version)
 
 geocoded_ev <- geocoded_ev %>% 
-  mutate(geoid_tract_20 = glue("36{county_fips}{census_tract_20}")) 
+  mutate(geoid = glue("36{county_fips}{census_tract_20}")) %>% 
+  mutate(geoid = na_if(geoid, "36NANA"))
 
-# Handle still-missing addresses with Planning key
+# Isolate missing fields
+
+uncoded_evictions <- geocoded_ev %>% 
+  filter(is.na(geoid))  # 503 of 10,433 distinct addresses don't have a geoid
+
+# Fill in some blanks with Planning Department's partially-helpful tract/GEOID crosswalk
 
 geocoded_ev <- geocoded_ev %>% 
+  mutate(geoid_tract_20 = as.character(geoid)) %>%
+  select(-geoid) %>% 
   mutate(censustract = as.character(censustract)) %>% 
-  left_join(tract_key, by = c('boroid', 'censustract'), relationship = 'many-to-many') %>%  
+  left_join(tract_key, by = c('boroid', 'censustract')) %>%  
   mutate(geoid = case_when(
     is.na(geoid) ~ geoid_tract_20,
     TRUE ~ geoid)
   ) %>% 
-  mutate(geoid = na_if(geoid, "36NANA")) # 
+  mutate(geoid = na_if(geoid, "36NANA"))
 
 uncoded_evictions <- geocoded_ev %>% 
-  filter(is.na(geoid))  # 137 of 10,433 distinct addresses don't have a geoid
+  filter(is.na(geoid))  # down to 205 from 197
 
 # Save! ------------------------------------------------------------------------
 
