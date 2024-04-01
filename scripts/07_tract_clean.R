@@ -53,9 +53,14 @@ acs <- read_csv("data_build/acs5_tracts_12_23_renter_occ_units.csv") %>%
   mutate(geoid = as.character(geoid))
 
 acs_missing <- acs %>% 
-  filter(if_any(everything(), is.na)) # 1,426 of 19,663 contain missing obs
+  select(year, geoid, tot_units, tot_vac_units, tot_occ_units, renter_occ_units, tot_pop_rou, tot_wh_rou, pct_wh_rou, tot_hh, tot_hh_pov, pct_pov) %>% 
+  filter(if_any(everything(), is.na)) %>% 
+  arrange(geoid, year) # 544 of 19,663 contain missing obs
 
-
+geoid_acs_count <- acs_missing %>% 
+  group_by(geoid) %>% 
+  summarize(n_rou = sum(renter_occ_units))  # 112 geoids show "NA" for pop covariate estimates bc they have zero renter-occ housing
+  
 # Generate tract-level eviction counts 
 
 evictions <- read_csv("data_raw/evictions_2017.csv") %>% 
