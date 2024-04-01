@@ -172,9 +172,11 @@ analyze <- analyze %>%
     pct_pov_17 = case_when(
       year == 2017 ~ pct_pov),   # poverty rate
     pct_wh_17 = case_when(
-      year == 2017 ~ pct_wh_rou)   # time-invariant control for baseline POC residents at treatment selection year
-  ) %>% 
-  fill(evict_rate_17, rs_rate_17, pct_pov_17, pct_wh_17, .direction = "updown") %>% 
+      year == 2017 ~ pct_wh_rou),   # time-invariant control for baseline POC residents at treatment selection year
+    pct_bl_17 = case_when(
+      year == 2017 ~ pct_bl_rou)   # time-invariant control for baseline POC residents at treatment selection year
+     ) %>% 
+  fill(evict_rate_17, rs_rate_17, pct_pov_17, pct_wh_17, pct_bl_17, .direction = "updown") %>% 
   select(-year) %>% 
   ungroup()
 

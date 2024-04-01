@@ -56,14 +56,60 @@ empties <- violations %>%
   filter(is.na(rs_rate_17)) # 40,348 obs missing rent stabilization rate
 empties %>% 
   group_by(geoid) %>% 
-  summarize(records = n()) # 524 obs of 160,391 missing rent stabilization rate
+  summarize(records = n()) # 524 tracts missing rent stabilization rate
 
-# ...
+# Identify non-residential census tracts 
 
-# TEMPORARY: DROP NA VALUES IN OUTCOME VARIABLE (n_violations_per_1k_units)
-# violations <- violations %>%   #160,391 obs
-#  drop_na() #105,325
-#  drop_na(n_violations_per_1k_units)   #142,850 obs
+violations %>% 
+  group_by(geoid) %>% 
+  distinct(geoid)  # 2,083 tracts
+
+violations %>% 
+  group_by(geoid) %>%
+  filter(inspection_yr_mo >= 2017, inspection_yr_mo < 2018, tot_units > 0) %>% 
+  distinct(geoid)  # 227 non-residential tracts contained zero housing units in 2017; 1,856 were residential.
+
+violations %>% 
+  group_by(geoid) %>%
+  filter(inspection_yr_mo >= 2017, inspection_yr_mo < 2018, tot_units > 0) %>% 
+  distinct(geoid)  # 227 non-residential tracts contained zero housing units in 2017; 1,856 were residential.
+
+
+# Quick summary variable confirmation, by cohort
+
+violations %>% 
+  group_by(treat_yr_mo) %>% 
+  mutate(med_yr_blt_rou = na_if(med_yr_blt_rou, 0)) %>% 
+  summarize(med_yr_blt_rou = mean(med_yr_blt_rou, na.rm = T),
+            pct_college_deg_rou = mean(pct_college_deg_rou, na.rm = T),
+            pct_bl_rou = mean(pct_bl_rou, na.rm = T),
+            pct_ltx_rou = mean(pct_ltx_rou, na.rm = T),
+            pct_asn_rou = mean(pct_asn_rou, na.rm = T),
+            pct_wh_rou = mean(pct_wh_rou, na.rm = T),
+            pct_wh_17 = mean(pct_wh_17, na.rm = T),
+            pct_bl_17 = mean(pct_bl_17, na.rm = T),
+            pct_pov_17 = mean(pct_pov_17, na.rm = T),
+            evict_rate_17 = mean(evict_rate_17, na.rm = T),
+            rs_rate_17 = mean(rs_rate_17, na.rm = T)
+            )
+
+violations %>% 
+  mutate(med_yr_blt_rou = na_if(med_yr_blt_rou, 0)) %>% 
+  summarize(med_yr_blt_rou = mean(med_yr_blt_rou, na.rm = T),
+            pct_college_deg_rou = mean(pct_college_deg_rou, na.rm = T),
+            pct_bl_rou = mean(pct_bl_rou, na.rm = T),
+            pct_ltx_rou = mean(pct_ltx_rou, na.rm = T),
+            pct_asn_rou = mean(pct_asn_rou, na.rm = T),
+            pct_wh_rou = mean(pct_wh_rou, na.rm = T),
+            pct_wh_17 = mean(pct_wh_17, na.rm = T),
+            pct_bl_17 = mean(pct_bl_17, na.rm = T),
+            pct_pov_17 = mean(pct_pov_17, na.rm = T),
+            evict_rate_17 = mean(evict_rate_17, na.rm = T),
+            rs_rate_17 = mean(rs_rate_17, na.rm = T)
+  )
+# Cohort 1 has the same mean building age as the rest of NYC (1952), but differs most in its proportion of Black residents -- on average during our study time period, 
+# 56% of Cohort 1 householders are Black, compared to 27% citywide. 25% in pov compared to 18.7% citywide pctpov17; 22.4% have college degrees, which is consistent with other groups;
+# 1% eviction rate and 4% rs rate, compared to the rest of the city's 4-5%.
 
 
 
@@ -100,18 +146,54 @@ ggdid(group_effects)
 
 # 2013-2019, WITH covariates -----------------------------------------
 
+maj_bl <- violations %>% 
+  filter(pct_bl_17 > 0.5) # 33,187 obs
+
+maj_bl %>% 
+  group_by(treat_yr_mo) %>% 
+  summarize(n_tracts = n_distinct(geoid)) %>% 
+  adorn_totals()
+  # Cohort 1: 69
+  # Cohort 2: 15
+  # Cohort 3: 20
+  # Cohort 4: 27
+  # Cohort 5: 300
+  # Total: 431
+
 maj_wh <- violations %>% 
-  filter(pct_wh_17 > 0.5) # 44,968
+  filter(pct_wh_17 > 0.5) # 44,968 obs
+
+maj_wh %>% 
+  group_by(treat_yr_mo) %>% 
+  summarize(n_tracts = n_distinct(geoid)) %>% 
+  adorn_totals()
+  # Cohort 1: 1
+  # Cohort 2: 20
+  # Cohort 3: 16 
+  # Cohort 4: 3
+  # Cohort 5: 544
+  # Total: 584
 
 maj_poc <- violations %>% 
   filter(pct_wh_17 < 0.5) # 96,943
+
+maj_poc %>% 
+  group_by(treat_yr_mo) %>% 
+  summarize(n_tracts = n_distinct(geoid)) %>% 
+  adorn_totals()
+# Cohort 1: 124
+# Cohort 2: 54
+# Cohort 3: 63 
+# Cohort 4: 66
+# Cohort 5: 953
+# Total: 1260
   
 est_w_covars <- att_gt(yname = "n_violations_per_1k_units",  
                        gname = "treat_yr_mo_num",
                        idname = "geoid",
                        tname = "inspection_yr_mo_num",
                        xformla = ~ evict_rate_17 + rs_rate_17 + pct_pov_17, 
-                       data = maj_poc,
+                       data = violations,
                        control_group = "notyettreated",
                        allow_unbalanced_panel = TRUE,
                        est_method = "dr") 
@@ -137,6 +219,7 @@ group_effects <- aggte(est_w_covars, type = "simple")
 summary(group_effects) # results not statistically significant
   #Maj Wh: -0.07 (nss)
   #Maj POC: +0.11 (nss)
+  #Maj Bl: +0.15
   #All: +0.13
 
 group_effects <- aggte(est_w_covars, type = "calendar")
