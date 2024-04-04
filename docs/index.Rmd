@@ -9,7 +9,7 @@ output:
 
 Tony Bodulovic, Jiayi Chai, Sarah Ligon, & Reba Yohannan\
 NYU Wagner Research Capstone '23 - '24\
-March 5, 2024
+April 1, 2024
 
 Project R scripts and data at [github.com/ligonish/nyu-capstone-F23-S24](https://github.com/ligonish/nyu-capstone-F23-S24).
 
@@ -47,6 +47,7 @@ library(RSocrata)    # pulls from NYC OpenData API
 library(janitor)     # data cleaning & easy table percentages
 library(readxl)      # import Census.gov ZIP->ZCTA crosswalks from .xls format
 library(priceR)      # CPI-adjust dollar amounts
+library(campfin)     # normalize address spellings
 library(lubridate)   # date variable normalization
 library(zoo)         # stores evenly-counted year-month periods as numeric variables
 library(did)         # Callaway & Sant'Anna's package implementing their staggered DiD method
@@ -87,8 +88,10 @@ v_desc <- c("PROVIDE ADEQUATE SUPPLY OF HOT WATER FOR THE FIXTURES", "PROVIDE AN
  HEATING SYSTEM, OR AN APPROVED SYSTEM OF GAS OR ELECTRICAL HEATING IN GOOD OPERATING CONDITION FOR THE DWELLING UNIT", "PROVIDE AN ADEQUATE SUPPLY OF HEAT FOR THE APARTMENT", "PROVIDE HOT WATER AT ALL HOT WATER FIXTURES")
 
 tibble(v_codes, v_adm, v_desc) %>%
-  kbl(col.names = c('Code', 'NYC Law', 'HPD Description')) %>% 
-    kable_styling(full_width = F, html_font = "Roboto Condensed")
+  kbl(caption = 'Table 5. NYC HPD Housing Maintenance Violation Categories Selected for Study',
+      col.names = c('Code', 'NYC Law', 'HPD Description')) %>% 
+    kable_styling(full_width = F, html_font = "Roboto Condensed") %>% 
+  add_footnote("Source: NYC HPD Housing Maintenance Code Violations, NYC OpenData, accessed 03/03/2024.", notation="none")
 
 rm(v_adm, v_codes, v_desc)
 ```
@@ -219,6 +222,69 @@ rm(zctas)
 
 *1498 obs of 29 vars*
 
+###U.S. Census: Tract-Level Estimates
+
+```{r}
+counties <- c("Bronx", "Kings", "New York", "Queens", "Richmond") # so we don't get the whole of NY state in one file
+```
+
+```{r}
+acs5_tracts_12_23 <- map_dfr(
+  years,
+  ~ get_acs(
+    geography = "tract",
+    state = "NY",
+    county = counties,
+    variables = census_variables,
+    year = .x,
+    survey = "acs5",
+    output = "wide",
+    geometry = FALSE  # can set to "T" for sf mapping down the line
+  ),
+  .id = "year"  
+) %>%
+  select(-ends_with("M")) %>%  # removing superfluous margin of error estimates
+  arrange(GEOID, year)
+```
+
+```{r}
+acs5_tracts_12_23 <- acs5_tracts_12_23 %>% 
+  rename(tot_units = B25001_001E,
+         tot_occ_units = B25032_001E,
+         tot_vac_units = B25002_003E,
+         renter_occ_units = B25032_013E,
+         tot_hh = B17017_001E,
+         tot_hh_pov = B17017_002E,
+         tot_pop_rou = B25008_003E,
+         med_hh_inc_rou = B25119_003E,
+         med_yr_blt_rou = B25037_003E,
+         med_yr_moved_in_rou = B25039_003E,
+         med_gross_rent = B25064_001E,
+         med_rent_burden = B25071_001E,
+         tot_college_degree_rou = B25013_011E,
+         tot_wh_rou = B25003H_003E,
+         tot_bl_rou = B25003B_003E,
+         tot_asn_rou = B25003D_003E,
+         tot_ltx_rou = B25003I_003E
+  ) %>%  
+  mutate(med_gross_rent_2020_adj = adjust_for_inflation(med_gross_rent, year, "US", to_date = 2020),
+         med_gross_rent_2020_adj = round_to_nearest(med_gross_rent_2020_adj, 1), .after = med_gross_rent) %>% 
+  mutate(med_hh_inc_rou_2020_adj = adjust_for_inflation(med_hh_inc_rou, year, "US", to_date = 2020),
+         med_hh_inc_rou_2020_adj = round_to_nearest(med_hh_inc_rou_2020_adj, 1), .after = med_hh_inc_rou) %>% 
+  mutate(pct_college_deg_rou = round(tot_college_degree_rou/renter_occ_units, 2), .after = tot_college_degree_rou) %>% 
+  mutate(pct_wh_rou = round(tot_wh_rou/renter_occ_units, 2), .after = tot_wh_rou) %>% 
+  mutate(pct_bl_rou = round(tot_bl_rou/renter_occ_units, 2), .after = tot_bl_rou) %>% 
+  mutate(pct_asn_rou = round(tot_asn_rou/renter_occ_units, 2), .after = tot_asn_rou) %>%
+  mutate(pct_ltx_rou = round(tot_ltx_rou/renter_occ_units, 2), .after = tot_ltx_rou) %>% 
+  mutate(pct_rent = round(renter_occ_units/tot_occ_units, 2), .after = renter_occ_units) %>% 
+  mutate(pct_vac = round(tot_vac_units/tot_occ_units, 2), .after = tot_vac_units) %>% 
+  mutate(pct_pov = round(tot_hh_pov/tot_hh, 2), .after = tot_hh_pov) 
+```
+
+```{r}
+write_csv(acs5_tracts_12_23, "../data_build/acs5_tracts_12_23_renter_occ_units.csv")
+```
+
 ### NYC-DOI Eviction Counts
 
 ```{r}
@@ -253,7 +319,7 @@ rtc_zips <- read_csv("../data_build/rtc_zip_rollout.csv") %>% # Source: Ellen et
 
 *25 obs of 2 vars*
 
-## Data Cleaning
+## ZIP-Level Data Cleaning
 
 ```{r}
 violations <- violations %>% 
@@ -394,9 +460,9 @@ rm(corrected_zips, evict, rs, rtc_zips)
 
 *13,552 observations of 41 variables.*
 
-## Summary Statistics
+## ZIP-Level Summary Statistics
 
-Table 1
+Table 1(a)
 
 ```{r}
 labels = c("Total violations",
@@ -444,7 +510,7 @@ violations %>%
      group.test = T,
      col.align = 'center',
      labels = labels,
-     title = 'Table 1. Summary Statistics by RTC Treatment Cohort: NYC Renter-Occupied Units, January 2012 - May 2019',
+     title = 'Table 1(a). Summary Statistics by ZIP-Level RTC Treatment Cohort: NYC Renter-Occupied Units, January 2013 - May 2019',
      out = 'kable') %>% 
   kable_styling(full_width = F, 
                 html_font = "Roboto Condensed",
@@ -476,12 +542,6 @@ violations %>%
                align = "c") %>% 
   kable_styling(full_width = F, html_font = "Roboto Condensed")
   
-```
-
-Try graphing these?
-
-```{r}
-
 ```
 
 
@@ -531,7 +591,7 @@ violations %>%
     kable_styling(full_width = F, html_font = "Roboto Condensed")
 ```
 
-## Data Analysis
+## ZIP-Level Analysis
 
 ### CS-DiD: No Covariates
 
@@ -717,7 +777,8 @@ knitr::kables(
 
 ```
 
-### Parallel Trends "Test"
+
+### ZIP-Level Parallel Trends "Test"
 
 via [Callaway's documentation](https://cran.r-project.org/web/packages/did/vignettes/pre-testing.html): "The did package contains an additional pre-test for the conditional parallel trends assumption in the conditional_did_pretest function."
 
@@ -781,5 +842,364 @@ cdp_table %>%
     align = "l") %>% 
   add_footnote(c("Callaway and Sant'Anna propose the Cramer von Mises or Kolgorov-Smirnov-type integrated moments test as one tool for assessing whether the conditional parallel trends assumption might hold for all groups in all pre-treatment periods. See https://search.r-project.org/CRAN/refmans/did/html/conditional_did_pretest.html and Section 4 of Callaway & Sant'Anna (2020)."), notation = "none") %>% 
     kable_styling(full_width = F, html_font = "Roboto Condensed")
+```
+
+
+
+## Tract-Level Data Cleaning
+
+See scripts/06_geocoding for detailed code that generates standard U.S. Census GEOIDs for most observations in our eviction dataset and violations dataset. Evictions, in particular, was incredibly messy; missing/uncoded observations stored separately. The geocoding is very memory-intensive, so here's a shortcut to load the resulting data.
+
+```{r}
+geocoded_vio <- read_csv("../data_build/geocoded_violation_addresses.csv") 
+rtc_zips <- read_csv("../data_build/rtc_zip_rollout.csv") %>% # Source: Ellen et al (2021), "Early Evidence on Eviction Patterns", pg.8 footnotes
+  clean_names() %>% 
+  mutate(zip = as.numeric(zip)) %>% 
+  rename(rtc_treat_date = date_added) %>% 
+  select(cohort, rtc_treat_date, zip)
+
+tract_zip_assignments <- read_csv("../data_build/tb_tract_zip_assignments.csv") %>% 
+  clean_names() %>% 
+  filter(res_ratio > 0) %>%   # SL added in March, since several tracts had no residential addresses in a given zip
+  select(zip, tract) %>% 
+  rename (geoid = tract) %>% 
+  left_join(rtc_zips, by = "zip") %>%  
+  mutate(
+    cohort = replace_na(cohort, 5),
+    rtc_treat_date = replace_na(rtc_treat_date, as_date("2021-05-11")),
+    geoid = as.character(geoid)
+    ) %>% 
+  rename(tract_treat_zip = zip)
+
+geocoded_ev <- read_csv("../data_build/geocoded_evictions.csv") %>% 
+  select(address, geoid) %>% 
+  mutate(geoid = as.character(geoid))
+
+geocoded_rs <- read_csv("../data_build/rs17_tract_counts.csv") %>% 
+  clean_names() %>% 
+  mutate(geoid = as.character(geoid))
+
+acs <- read_csv("../data_build/acs5_tracts_12_23_renter_occ_units.csv") %>% 
+  clean_names() %>% 
+  select(!name) %>% 
+  mutate(geoid = as.character(geoid))
+
+acs_missing <- acs %>% 
+  select(year, geoid, tot_units, tot_vac_units, tot_occ_units, renter_occ_units, tot_pop_rou, tot_wh_rou, pct_wh_rou, tot_hh, tot_hh_pov, pct_pov) %>% 
+  filter(if_any(everything(), is.na)) %>% 
+  arrange(geoid, year) # 544 of 19,663 contain missing obs
+
+geoid_acs_count <- acs_missing %>% 
+  group_by(geoid) %>% 
+  summarize(n_rou = sum(renter_occ_units))  # 112 geoids show "NA" for pop covariate estimates bc they have zero renter-occ housing
+  
+```
+
+Generate tract-level eviction counts 
+
+```{r}
+evictions <- read_csv("../data_raw/evictions_2017.csv") %>% 
+  mutate(address = normal_address(eviction_address)) %>% 
+  mutate(
+    address = str_replace_all(address, "STREE T|S TREET|STRE ET|ST REET|STR EET|STREE(?=[:punct:])",
+                              "ST"),
+    address = str_replace_all(address, "A VENUE|AV ENUE|AVE NUE|AVEN UE|AVENU E|AV ENUE|AV |AVE ",
+                              "AVE"),
+    address = str_replace_all(address, "P ARKWAY|PA RKWAY|PAR KWAY|PARKW AY|PKWY",
+                              "PKWY"),
+    address = str_replace_all(address, "CONC OURSE",
+                              "CONCOURSE")) %>% 
+  left_join(geocoded_ev, by = "address") %>%     # 13,601 obs of 10 variables
+  group_by(geoid) %>% 
+  summarize(evictions_per_tract = n_distinct(docket_number)) # 1,902 obs of 2 variables
+
+```
+
+Generate tract-level violation counts 
+
+```{r}
+analyze <- read_csv("../data_build/cleaner_utility_violations.csv.gz") %>%
+  mutate(year = year(inspection_yr_mo)) %>%  
+  mutate(address = paste(housenumber, streetname), .after = zip) %>% 
+  mutate(
+    address = str_replace_all(address, "HOR HARDING EXPRESSWAY SR NORTH",
+                              "HORACE HARDING EXPY"),
+    address = str_replace_all(address, "HOR HARDING EXPRESSWAY SR SOUTH",
+                              "HORACE HARDING EXPY"),
+    address = str_replace_all(address, "ST NICHOLAS PLACE",
+                              "SAINT NICHOLAS PL"),
+    address = str_replace_all(address, "(?<=[:space:])9 AVENUE",
+                              "9TH AVENUE"),
+    address = str_replace_all(address, "WEST 181 STREET",
+                              "W 181ST ST"),
+    address = str_replace_all(address, "FREDERICK DOUGAL",
+                              "FREDERICK DOUGLASS"),
+    address = str_replace_all(address, "MANH(?=[:space:])",
+                              "MANHATTAN"),
+    address = str_replace_all(address, "EAST 6(?=[:space:])",
+                              "EAST 6TH"),
+    address = str_replace_all(address, "EAST 6(?=[:space:])",
+                              "EAST 6TH"),
+    address = str_replace_all(address, "EAST 12(?=[:space:])",
+                              "EAST 12TH"),
+    address = str_replace_all(address, "EAST 13(?=[:space:])",
+                              "EAST 13TH"),
+    address = str_replace_all(address, "EAST 14(?=[:space:])",
+                              "EAST 14TH"),
+    address = str_replace_all(address, "EAST 15(?=[:space:])",
+                              "EAST 15TH"),
+    address = str_replace_all(address, "EAST 31(?=[:space:])",
+                              "EAST 31ST"),
+    address = str_replace_all(address, "EAST 39(?=[:space:])",
+                              "EAST 39TH"),
+    address = str_replace_all(address, "EAST 57(?=[:space:])",
+                              "EAST 57TH"),
+    address = str_replace_all(address, "EAST 132(?=[:space:])",
+                              "EAST 132ND"),
+    address = str_replace_all(address, "EAST 174(?=[:space:])",
+                              "EAST 174TH"),
+    address = str_replace_all(address, "EAST 176(?=[:space:])",
+                              "EAST 176TH"),
+    address = str_replace_all(address, "EAST 187(?=[:space:])",
+                              "EAST 187TH"),
+    address = str_replace_all(address, "EAST 238(?=[:space:])",
+                              "EAST 238TH"),
+    address = str_replace_all(address, "MC BRIDE",
+                              "MCBRIDE"),
+    address = str_replace_all(address, "ADAM C POWELL BOULEVARD",
+                              "ADAM CLAYTON POWELL JR BLVD"),
+    address = str_replace_all(address, "ADAM C POWELL JR BOULEVARD",
+                              "ADAM CLAYTON POWELL JR BLVD"),
+    address = str_replace_all(address, "HUTCH RIVER",
+                              "HUTCHINSON RIVER"),
+    address = str_replace_all(address, "AVENUE",
+                              "AVE"),
+    address = str_replace_all(address, "STREET",
+                              "ST"),
+    address = str_replace_all(address, "PARKWAY",
+                              "PKWY"),
+    address = str_replace_all(address, "BOULEVARD",
+                              "BLVD")) %>% 
+  left_join(geocoded_vio, by = "address") %>%     # adds geoid to each violation
+#  left_join(tract_zip_assignments, by = "geoid") %>%    # adds treatment date to each violation
+ group_by(geoid, inspection_yr_mo) %>% 
+  summarize(n_violations = n_distinct(violationid, na.rm = F)) %>%
+  ungroup() %>% 
+  complete(geoid, inspection_yr_mo, fill = list(n_violations = 0)) # expand all 12 annual yearmonth observations for all zip codes, even if no violations reported
+
+```
+
+Merge tract-level covariates for analysis
+
+```{r}
+analyze <- analyze %>% 
+  mutate(year = year(inspection_yr_mo),
+         geoid = as.character(geoid)) %>% 
+  group_by(geoid, inspection_yr_mo) %>% 
+  left_join(acs, by = c("year", "geoid")) %>%   # Census covariates
+  left_join(evictions, by = "geoid") %>% 
+  left_join(geocoded_rs, by = "geoid") %>% 
+  mutate(n_violations_per_1k_units = ((n_violations/renter_occ_units)*1000), .after = n_violations) %>% 
+  ungroup() %>% 
+  group_by(geoid) %>% 
+  mutate(
+    evict_rate_17 = case_when(
+      year == 2017 ~ (evictions_per_tract/renter_occ_units)),   # eviction rate
+    rs_rate_17 = case_when(
+      year == 2017 ~ (rs_17_count/renter_occ_units)),   # rent stabilization rate
+    pct_pov_17 = case_when(
+      year == 2017 ~ pct_pov),   # poverty rate
+    pct_wh_17 = case_when(
+      year == 2017 ~ pct_wh_rou),   # time-invariant control for baseline POC residents at treatment selection year
+    pct_bl_17 = case_when(
+      year == 2017 ~ pct_bl_rou)   # time-invariant control for baseline POC residents at treatment selection year
+     ) %>% 
+  fill(evict_rate_17, rs_rate_17, pct_pov_17, pct_wh_17, pct_bl_17, .direction = "updown") %>% 
+  select(-year) %>% 
+  ungroup()
+```
+
+Generate RTC Treatment Status Indicator
+
+```{r}
+analyze <- analyze %>% 
+  left_join(tract_zip_assignments, by = "geoid")
+```
+
+Convert 'Inf' values to 'NA'
+
+```{r}
+analyze <- analyze %>% 
+  mutate_all(~ifelse(is.infinite(.), NA, .))
+```
+
+Convert '0' values in "Year Built" to 'NA'
+
+```{r}
+analyze <- analyze %>% 
+  mutate(med_yr_blt_rou = na_if(med_yr_blt_rou, 0)) 
+
+```
+
+
+Save
+
+```{r}
+write_csv(analyze, "../data_build/tract_set_for_analysis.csv.gz")
+```
+
+
+## Tract-Level Summary Stats
+
+```{r}
+analyze <- read_csv("../data_build/tract_set_for_analysis.csv.gz")
+```
+
+```{r}
+test <- analyze %>% 
+  mutate(
+    treated = case_when(
+      rtc_treat_date > inspection_yr_mo ~ 0,
+      TRUE ~ 1))  
+```
+
+
+Table 1(b)
+
+```{r}
+labels = c("Total violations",
+           "Violations per 1k units",
+           "Total housing units",
+           "Total vacant housing units",
+           "% vacant housing units",
+           "Total occupied housing units",
+           "Total renter-occupied units",
+           "% housing units renter-occupied",
+           "Renter population",
+           "Median renter hh income",
+           "Median renter hh inc in 2020 USD",
+           "Median year built",
+           "Median year moved into unit",
+           "Median gross rent",
+           "Median gross rent in 2020 USD",
+           "Median rent burden",
+           "Total renter householders with college degree",
+           "% renter householders with college degree",
+           "Total white renter householders",
+           "% white renter householders",
+           "Total Black renter householders",
+           "% Black renter householders",
+           "Total Asian renter householders",
+           "% Asian renter householders",
+           "Total Hispanic/Latinx renter householders",
+           "% Hispanic/Latinx renter householders",
+           "Total households",
+           "Total hh below Federal poverty line",
+           "% hh below Federal poverty line",
+           "Total evictions in 2017",
+           "Total rent-stabilized units in 2017",
+           "% renter-occupied unit evictions in 2017",
+           "% renter-occupied units rent-stabilized in 2017",
+           "% hh below Federal poverty line in 2017",
+           "% white renter householders in 2017",
+           "% Black renter householders in 2017")
+
+analyze %>% 
+  ungroup() %>% 
+  mutate(cohort = factor(cohort)) %>%
+  select(-c(geoid, tract_treat_zip, inspection_yr_mo, rtc_treat_date)) %>% 
+  st(group = 'cohort',
+     group.test = T,
+     col.align = 'center',
+     labels = labels,
+     title = 'Table 1(b). Summary Statistics by Tract-Level RTC Treatment Cohort: NYC Renter-Occupied Units, January 2012 - May 2019',
+     out = 'kable') %>% 
+  kable_styling(full_width = F, 
+                html_font = "Roboto Condensed",
+                bootstrap_options = c("condensed", "striped"))
+```
+
+
+Key Covariate Summaries, by Cohort (to highlight heterogeneity)
+
+```{r}
+violations %>% 
+  filter(!is.na(cohort)) %>% 
+  group_by(cohort) %>%
+  summarize(
+    #violations = sum(n_violations),
+    tracts = n_distinct(geoid, na.rm = TRUE),
+            violation_rate = mean(n_violations_per_1k_units, na.rm = TRUE),
+            evict_rate = mean(evict_rate_17, na.rm = TRUE),
+            rs_rate = mean(rs_rate_17, na.rm = TRUE),
+            pct_pov = (mean(pct_pov_17, na.rm = TRUE)*100),
+            #hh_inc = mean(med_hh_inc_rou_2020_adj, na.rm = TRUE),
+            rent_burden = mean(med_rent_burden, na.rm = TRUE),
+            yr_blt = mean(med_yr_blt_rou, na.rm = TRUE),
+            pct_college_grads = (mean(pct_college_deg_rou, na.rm = TRUE)*100),
+            pct_wh = (mean(pct_wh_rou, na.rm = TRUE)*100),
+            pct_bl = (mean(pct_bl_rou, na.rm = TRUE)*100),
+            pct_asn = (mean(pct_asn_rou, na.rm = TRUE)*100),
+            pct_ltx = (mean(pct_ltx_rou, na.rm = TRUE)*100)
+            ) %>% 
+  knitr::kable(digits = 2,
+               caption = 'Table 3. Selected Potential Covariates by RTC Treatment Cohort: NYC Renter-Occupied Units, January 2012 - May 2019',
+               col.names = c("Treatment Cohort", "Residential Census Tracts", "Avg Monthly Violations per 1k Units", "2017 Eviction Rate", "2017 Rent Stabilization Rate", "2017 Poverty Rate", "Rent Burden", "Median Year Built", "Percent College Graduates", "Percent White", "Percent Black", "Percent Asian", "Percent Latinx"),
+               align = "c") %>% 
+  kable_styling(full_width = F, html_font = "Roboto Condensed")
+  
+```
+
+Table 2. Number of Months Treated, by RTC Cohort
+
+```{r}
+analyze %>% 
+  mutate(
+    treated = case_when(
+      rtc_treat_date > inspection_yr_mo ~ 0,
+      TRUE ~ 1)) %>% 
+  filter(!is.na(cohort)) %>% 
+  group_by(cohort, treated) %>% 
+  summarize(n_months_treated = n_distinct(inspection_yr_mo),
+            n_tracts = n_distinct(geoid)) %>% 
+  pivot_wider(names_from = treated, values_from = n_months_treated) %>%
+  mutate(rtc_date = case_when(
+    cohort == 1 ~ "Aug. 2017",
+    cohort == 2 ~ "Oct. 2017",
+    cohort == 3 ~ "Nov. 2018",
+    cohort == 4 ~ "Dec. 2019",
+    cohort == 5 ~ "May 2021"), 
+    .after = cohort) %>%
+  replace(is.na(.), 0) %>% 
+  adorn_totals(,,,, n_tracts) %>% 
+  kable(
+    caption = 'Table 2. NYC Right-to-Counsel Treatment Waves Observed in 2013 - 2019 Study Period',
+    col.names = c('Wave', 'RTC Treatment Date', 'Tracts Treated', 'Months Observed Pre-Treatment', 'Months Observed Post-Treatment'),
+    align = "c") %>% 
+    kable_styling(full_width = F, html_font = "Roboto Condensed")
+```
+
+How many tracts per treatment wave?
+
+```{r}
+analyze %>% 
+  group_by(cohort) %>% 
+  summarize(tracts = n_distinct(geoid, na.rm = T))
+```
+
+
+## Tract-Level Analysis
+
+### CS-DiD: No Covariates
+
+Callaway & Sant'Anna's package requires time and treatment periods to be stored as numeric variables, and never-treated groups should be assigned treatment period "0".
+
+```{r}
+violations %>% 
+  ungroup() %>% 
+  group_by(cohort) %>% 
+  summarize(max_vios = max(n_violations, na.rm = T),
+            max_per_1k = max(n_violations_per_1k_units, na.rm = T),
+            mean_per_1k = mean(n_violations_per_1k_units, na.rm = T))
 ```
 

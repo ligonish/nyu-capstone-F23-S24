@@ -122,9 +122,10 @@ geocoded_addr_01 <- addresses_01 %>%
           long = 'longitude',
           method = "census",
           full_results = TRUE,
+          custom_query = list(benchmark = "Public_AR_Census2020", 
+                              vintage = "Census2010_Census2020"),
           api_options = list(census_return_type = "geographies")) %>% 
-  rename(census_tract_20 = census_tract) %>% 
-  select(violationid, boroid, address, zip, county_fips, censustract, census_tract_20)
+  select(violationid, boroid, address, zip, county_fips, censustract, census_tract)
 
 # Batch 2/3
 
@@ -136,9 +137,10 @@ geocoded_addr_02 <- addresses_02 %>%
           long = 'longitude',
           method = "census",
           full_results = TRUE,
+          custom_query = list(benchmark = "Public_AR_Census2020", 
+                              vintage = "Census2010_Census2020"),
           api_options = list(census_return_type = "geographies")) %>% 
-  rename(census_tract_20 = census_tract) %>% 
-  select(violationid, boroid, address, zip, county_fips, censustract, census_tract_20)
+  select(violationid, boroid, address, zip, county_fips, censustract, census_tract)
 
 # Batch 3/3
 
@@ -150,9 +152,10 @@ geocoded_addr_03 <- addresses_03 %>%
           long = 'longitude',
           method = "census",
           full_results = TRUE,
+          custom_query = list(benchmark = "Public_AR_Census2020", 
+                              vintage = "Census2010_Census2020"),
           api_options = list(census_return_type = "geographies")) %>% 
-  rename(census_tract_20 = census_tract) %>% 
-  select(violationid, boroid, address, zip, county_fips, censustract, census_tract_20)
+  select(violationid, boroid, address, zip, county_fips, censustract, census_tract)
 
 # Stick all three geocoded violations addresses back together!
 
@@ -162,7 +165,7 @@ geocoded <- geocoded_addr_01 %>%
 # Add a full-length GEOID (c. 2020 tract numeration version)
 
 geocoded <- geocoded %>% 
-  mutate(geoid = glue("36{county_fips}{census_tract_20}"),
+  mutate(geoid = glue("36{county_fips}{census_tract}"),
          geoid = na_if(geoid, "36NANA")) 
 
 rm(addresses_01, addresses_02, addresses_03, geocoded_addr_01, geocoded_addr_02, geocoded_addr_03)
@@ -179,21 +182,22 @@ tract_key <- read_excel("data_raw/nyc_2020_census_tract_nta_cdta_relationships.x
   clean_names() %>% 
   select(geoid, boro_code, ct_label) %>% 
   rename(censustract = ct_label,
-         boroid = boro_code)
+         boroid = boro_code,
+         geoid_nyp = geoid)
 
 geocoded <- geocoded %>% 
-  mutate(geoid_tract_20 = as.character(geoid)) %>%
-  select(-geoid) %>% 
+  mutate(geoid = as.character(geoid)) %>%
   mutate(censustract = as.character(censustract)) %>% 
   left_join(tract_key, by = c('boroid', 'censustract')) %>%  
   mutate(geoid = case_when(
-    is.na(geoid) ~ geoid_tract_20,
+    is.na(geoid) ~ geoid_nyp,
     TRUE ~ geoid)
   ) %>% 
-  mutate(geoid = na_if(geoid, "36NANA"))
+  mutate(geoid = na_if(geoid, "36NANA")) %>% 
+  select(-geoid_nyp)
 
-uncoded_violations <- geocoded %>% 
-  filter(is.na(geoid))  # down to 62 from 197
+uncoded_violations <- geocoded_test %>% 
+  filter(is.na(geoid))  # down to 70 from 197
 
 # Save! ------------------------------------------------------------------------
 
@@ -306,9 +310,10 @@ geocoded_ev_01 <- evictions_01 %>%
           long = 'longitude',
           method = "census",
           full_results = TRUE,
+          custom_query = list(benchmark = "Public_AR_Census2020", 
+                              vintage = "Census2010_Census2020"),
           api_options = list(census_return_type = "geographies")) %>% 
-  rename(census_tract_20 = census_tract) %>% 
-  select(address, county_fips, boroid, censustract, census_tract_20)
+  select(address, county_fips, boroid, censustract, census_tract)
 
 # Batch 2/2
 
@@ -320,41 +325,41 @@ geocoded_ev_02 <- evictions_02 %>%
           long = 'longitude',
           method = "census",
           full_results = TRUE,
-          api_options = list(census_return_type = "geographies")) %>% 
-  rename(census_tract_20 = census_tract) %>% 
-  select(address, county_fips, boroid, censustract, census_tract_20)
+          custom_query = list(benchmark = "Public_AR_Census2020", 
+                              vintage = "Census2010_Census2020"),
+          api_options = list(census_return_type = "geographies")) %>%
+  select(address, county_fips, boroid, censustract, census_tract)
 
 # Stick both geocoded eviction sets back together!
 
 geocoded_ev <- geocoded_ev_01 %>% 
-  bind_rows(list(geocoded_ev_02)) #10,476 obs of 3 variables
+  bind_rows(list(geocoded_ev_02)) #10,433 obs of 5 variables
 
 # Add a full-length GEOID (c. 2020 tract numeration version)
 
 geocoded_ev <- geocoded_ev %>% 
-  mutate(geoid = glue("36{county_fips}{census_tract_20}")) %>% 
+  mutate(geoid = glue("36{county_fips}{census_tract}")) %>% 
   mutate(geoid = na_if(geoid, "36NANA"))
 
 # Isolate missing fields
 
 uncoded_evictions <- geocoded_ev %>% 
-  filter(is.na(geoid))  # 503 of 10,433 distinct addresses don't have a geoid
+  filter(is.na(geoid))  # 490 of 10,433 distinct addresses don't have a geoid
 
 # Fill in some blanks with Planning Department's partially-helpful tract/GEOID crosswalk
 
 geocoded_ev <- geocoded_ev %>% 
-  mutate(geoid_tract_20 = as.character(geoid)) %>%
-  select(-geoid) %>% 
+  mutate(geoid = as.character(geoid)) %>%
   mutate(censustract = as.character(censustract)) %>% 
   left_join(tract_key, by = c('boroid', 'censustract')) %>%  
   mutate(geoid = case_when(
-    is.na(geoid) ~ geoid_tract_20,
+    is.na(geoid) ~ geoid_nyp,
     TRUE ~ geoid)
   ) %>% 
   mutate(geoid = na_if(geoid, "36NANA"))
 
 uncoded_evictions <- geocoded_ev %>% 
-  filter(is.na(geoid))  # down to 205 from 197
+  filter(is.na(geoid))  # down to 198 from 490
 
 # Save! ------------------------------------------------------------------------
 

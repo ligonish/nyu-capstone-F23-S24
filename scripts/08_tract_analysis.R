@@ -41,44 +41,39 @@ violations <- violations %>%
 # Check for missing data in newer baseline eviction/poverty/rent stabilization variables ---
 
 empties <- violations %>%   # violation rate missing values
-  filter(is.na(n_violations_per_1k_units)) # 17,541 of 160,391 ()
+  filter(is.na(n_violations_per_1k_units)) # 325 of 160,391 ()
 empties %>% 
   group_by(geoid) %>% 
-  summarize(records = n()) # 228 tracts are missing n_violations_per_1k units
+  summarize(records = n()) # 77 tracts are missing n_violations_per_1k units
 
 empties <- violations %>%  
-  filter(is.na(evict_rate_17)) # 34,573 of 160,391 missing eviction rate
+  filter(is.na(evict_rate_17)) # 17,556 of 160,391 missing eviction rate
 empties %>% 
   group_by(geoid) %>% 
-  summarize(records = n()) # 449 tracts missing eviction rate
+  summarize(records = n()) # 228 tracts missing eviction rate
 
 empties <- violations %>%  
-  filter(is.na(rs_rate_17)) # 40,348 obs missing rent stabilization rate
+  filter(is.na(rs_rate_17)) # 24,717 obs missing rent stabilization rate
 empties %>% 
   group_by(geoid) %>% 
-  summarize(records = n()) # 524 tracts missing rent stabilization rate
+  summarize(records = n()) # 321 tracts missing rent stabilization rate
 
 # Identify non-residential census tracts 
 
 violations %>% 
   group_by(geoid) %>% 
-  distinct(geoid)  # 2,083 tracts
+  distinct(geoid)  # 1,987 tracts
 
 violations %>% 
   group_by(geoid) %>%
   filter(inspection_yr_mo >= 2017, inspection_yr_mo < 2018, tot_units > 0) %>% 
-  distinct(geoid)  # 227 non-residential tracts contained zero housing units in 2017; 1,856 were residential.
-
-violations %>% 
-  group_by(geoid) %>%
-  filter(inspection_yr_mo >= 2017, inspection_yr_mo < 2018, tot_units > 0) %>% 
-  distinct(geoid)  # 227 non-residential tracts contained zero housing units in 2017; 1,856 were residential.
-
+  distinct(geoid)  # 4 non-residential tracts contained zero housing units in 2017; 1,983 were residential.
 
 # Quick summary variable confirmation, by cohort
 
 violations %>% 
-  group_by(treat_yr_mo) %>% 
+  filter(!is.na(cohort)) %>% 
+  group_by(cohort) %>% 
   mutate(med_yr_blt_rou = na_if(med_yr_blt_rou, 0)) %>% 
   summarize(med_yr_blt_rou = mean(med_yr_blt_rou, na.rm = T),
             pct_college_deg_rou = mean(pct_college_deg_rou, na.rm = T),
@@ -199,9 +194,14 @@ est_w_covars <- att_gt(yname = "n_violations_per_1k_units",
                        est_method = "dr") 
 summary(est_w_covars)
 ggdid(est_w_covars,
-      title = "Group-Time Average Treatment Effects of Right-to-Counsel on Landlord Maintenance Violations, 2013-2020",
+      title = "Tract-Level Group-Time ATE (With Covariates), 2013-2019",
       grtitle = "Received UA",
-      xgap = 20)
+      xgap = 12,
+      theming = FALSE) +
+  theme_ipsum_rc(grid = FALSE, ticks = TRUE) +
+  theme(legend.position = "top",
+        axis.text.x = element_text(angle = 45, 
+                                   margin = margin(t = 20)))
 
 group_effects <- aggte(est_w_covars, type = "group")
 summary(group_effects) # Wave 1 has a statistically significant bump in hhw violations 

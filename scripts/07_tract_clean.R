@@ -16,7 +16,6 @@ library(campfin)       # normalize address spellings
 # Load data
 
 geocoded_vio <- read_csv("data_build/geocoded_violation_addresses.csv") %>% 
-#  distinct(violationid, .keep_all = T) %>% 
   select(address, geoid)
 
 rtc_zips <- read_csv("data_build/rtc_zip_rollout.csv") %>% # Source: Ellen et al (2021), "Early Evidence on Eviction Patterns", pg.8 footnotes
@@ -40,7 +39,6 @@ tract_zip_assignments <- read_csv("data_build/tb_tract_zip_assignments.csv") %>%
 
 geocoded_ev <- read_csv("data_build/geocoded_evictions.csv") %>% 
   select(address, geoid) %>% 
-  #distinct(address, .keep_all = T) %>% 
   mutate(geoid = as.character(geoid))
 
 geocoded_rs <- read_csv("data_build/rs17_tract_counts.csv") %>% 
@@ -76,7 +74,7 @@ evictions <- read_csv("data_raw/evictions_2017.csv") %>%
                               "CONCOURSE")) %>% 
   left_join(geocoded_ev, by = "address") %>%     # 13,601 obs of 10 variables
   group_by(geoid) %>% 
-  summarize(evictions_per_tract = n_distinct(docket_number)) # 1,902 obs of 2 variables
+  summarize(evictions_per_tract = n_distinct(docket_number)) # 1,829 obs of 2 variables
 
 # n_occur <- data.frame(table(evictions$address)) # note some addresses had as many as 15 evictions in 2017
 
@@ -178,7 +176,12 @@ analyze <- analyze %>%
      ) %>% 
   fill(evict_rate_17, rs_rate_17, pct_pov_17, pct_wh_17, pct_bl_17, .direction = "updown") %>% 
   select(-year) %>% 
-  ungroup()
+  ungroup() %>% 
+  mutate(
+    n_violations_per_1k_units = ifelse(
+      is.infinite(n_violations_per_1k_units), NA, n_violations_per_1k_units) 
+    ) %>% 
+  mutate(med_yr_blt_rou = na_if(med_yr_blt_rou, 0))
 
 # Generate RTC Treatment Status Indicator
 
