@@ -186,7 +186,7 @@ analyze <- analyze %>%
 # Generate RTC Treatment Status Indicator
 
 analyze <- analyze %>% 
-  left_join(tract_zip_assignments, by = "geoid")
+  left_join(tract_zip_assignments, by = "geoid")   # 152,999 obs of 41 variables
 
 # Save
 

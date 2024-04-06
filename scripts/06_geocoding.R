@@ -123,7 +123,7 @@ geocoded_addr_01 <- addresses_01 %>%
           method = "census",
           full_results = TRUE,
           custom_query = list(benchmark = "Public_AR_Census2020", 
-                              vintage = "Census2010_Census2020"),
+                              vintage = "Census2010_Census2020"),  # 2010 Census geographies (for accurate merging w/ ACS set)
           api_options = list(census_return_type = "geographies")) %>% 
   select(violationid, boroid, address, zip, county_fips, censustract, census_tract)
 
@@ -138,7 +138,7 @@ geocoded_addr_02 <- addresses_02 %>%
           method = "census",
           full_results = TRUE,
           custom_query = list(benchmark = "Public_AR_Census2020", 
-                              vintage = "Census2010_Census2020"),
+                              vintage = "Census2010_Census2020"),   # 2010 Census geographies (for accurate merging w/ ACS set)
           api_options = list(census_return_type = "geographies")) %>% 
   select(violationid, boroid, address, zip, county_fips, censustract, census_tract)
 
@@ -153,7 +153,7 @@ geocoded_addr_03 <- addresses_03 %>%
           method = "census",
           full_results = TRUE,
           custom_query = list(benchmark = "Public_AR_Census2020", 
-                              vintage = "Census2010_Census2020"),
+                              vintage = "Census2010_Census2020"),   # 2010 Census geographies (for accurate merging w/ ACS set)
           api_options = list(census_return_type = "geographies")) %>% 
   select(violationid, boroid, address, zip, county_fips, censustract, census_tract)
 
@@ -311,7 +311,7 @@ geocoded_ev_01 <- evictions_01 %>%
           method = "census",
           full_results = TRUE,
           custom_query = list(benchmark = "Public_AR_Census2020", 
-                              vintage = "Census2010_Census2020"),
+                              vintage = "Census2010_Census2020"),   # 2010 Census geographies (for accurate merging w/ ACS set)
           api_options = list(census_return_type = "geographies")) %>% 
   select(address, county_fips, boroid, censustract, census_tract)
 
@@ -359,7 +359,7 @@ geocoded_ev <- geocoded_ev %>%
   mutate(geoid = na_if(geoid, "36NANA"))
 
 uncoded_evictions <- geocoded_ev %>% 
-  filter(is.na(geoid))  # down to 198 from 490
+  filter(is.na(geoid))  # down to 198 uncoded, from 490 -- the rest need hand-edits due to messy/inconsistent data entry
 
 # Save! ------------------------------------------------------------------------
 
