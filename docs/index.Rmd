@@ -1057,7 +1057,7 @@ violations <- read_csv("../data_build/tract_set_for_analysis.csv.gz")
 ```
 
 
-## Adjust data storage to work with did package
+Adjust data storage to work with did package
 
 ```{r}
 violations <- violations %>% 
