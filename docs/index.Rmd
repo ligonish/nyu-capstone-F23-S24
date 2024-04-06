@@ -1,5 +1,5 @@
 ---
-title: "Team 4 Interim Report Code Walkthrough"
+title: "Team 4 Rough Draft Code Walkthrough"
 output: 
   html_document:
     toc: yes
@@ -9,11 +9,11 @@ output:
 
 Tony Bodulovic, Jiayi Chai, Sarah Ligon, & Reba Yohannan\
 NYU Wagner Research Capstone '23 - '24\
-April 1, 2024
+April 7, 2024
 
 Project R scripts and data at [github.com/ligonish/nyu-capstone-F23-S24](https://github.com/ligonish/nyu-capstone-F23-S24).
 
-*Last updated 2024-03-02, SL*
+*Last updated 2024-04-06, SL*
 
 ```{r setup, include = FALSE}
 #knitr::opts_chunk$set(warning = FALSE, message = FALSE)
