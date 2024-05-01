@@ -1,5 +1,5 @@
 ---
-title: "Team 4 Rough Draft Code Walkthrough"
+title: "Team 4 Final Draft Code Walkthrough"
 output: 
   html_document:
     toc: yes
@@ -9,11 +9,11 @@ output:
 
 Tony Bodulovic, Jiayi Chai, Sarah Ligon, & Reba Yohannan\
 NYU Wagner Research Capstone '23 - '24\
-April 7, 2024
+May 6, 2024
 
 Project R scripts and data at [github.com/ligonish/nyu-capstone-F23-S24](https://github.com/ligonish/nyu-capstone-F23-S24).
 
-*Last updated 2024-04-06, SL*
+*Last updated 2024-04-29, SL*
 
 ```{r setup, include = FALSE}
 #knitr::opts_chunk$set(warning = FALSE, message = FALSE)
@@ -90,7 +90,7 @@ v_desc <- c("PROVIDE ADEQUATE SUPPLY OF HOT WATER FOR THE FIXTURES", "PROVIDE AN
  HEATING SYSTEM, OR AN APPROVED SYSTEM OF GAS OR ELECTRICAL HEATING IN GOOD OPERATING CONDITION FOR THE DWELLING UNIT", "PROVIDE AN ADEQUATE SUPPLY OF HEAT FOR THE APARTMENT", "PROVIDE HOT WATER AT ALL HOT WATER FIXTURES")
 
 tibble(v_codes, v_adm, v_desc) %>%
-  kbl(caption = 'Table 2. NYC HPD Housing Maintenance Violation Categories Selected for Study',
+  kbl(caption = 'Table 6. NYC HPD Housing Maintenance Violation Categories Selected for Study',
       col.names = c('Code', 'NYC Law', 'HPD Description')) %>% 
     kable_styling(full_width = F, html_font = "Roboto Condensed") %>% 
   add_footnote("Source: NYC HPD Housing Maintenance Code Violations, NYC OpenData, accessed 03/03/2024.", notation="none")
@@ -1130,7 +1130,7 @@ violations %>%
                 bootstrap_options = c("condensed", "striped"))
 ```
 
-Table 3. Number of Months Treated, by RTC Cohort
+Table 2. Number of Months Treated, by RTC Cohort
 
 ```{r}
 violations %>% 
@@ -1153,7 +1153,7 @@ violations %>%
   replace(is.na(.), 0) %>% 
   #adorn_totals(,,,, n_tracts) %>% 
   kable(
-    caption = 'Table 3. NYC Right-to-Counsel Treatment Waves Observed in 2013 - 2019 Study Period',
+    caption = 'Table 2. NYC Right-to-Counsel Treatment Waves Observed in 2013 - 2019 Study Period',
     col.names = c('Wave', 'RTC Treatment Date', 'Tracts Treated', 'Months Observed Pre-Treatment', 'Months Observed Post-Treatment'),
     align = "c") %>% 
     kable_styling(full_width = F, html_font = "Roboto Condensed")
@@ -1169,7 +1169,7 @@ violations %>%
 ```
 
 
-Table 4. Key Covariate Summaries, by Cohort (to highlight heterogeneity)
+Table 3. Key Covariate Summaries, by Cohort (to highlight heterogeneity)
 
 ```{r}
 violations %>% 
@@ -1192,7 +1192,7 @@ violations %>%
             pct_ltx = (mean(pct_ltx_rou, na.rm = TRUE)*100)
             ) %>% 
   knitr::kable(digits = 2,
-               caption = 'Table 4. Selected Potential Covariates by RTC Treatment Cohort: NYC Renter-Occupied Units, January 2013 - May 2019',
+               caption = 'Table 3. Selected Potential Covariates by RTC Treatment Cohort: NYC Renter-Occupied Units, January 2013 - May 2019',
                col.names = c("Treatment Cohort", "Residential Census Tracts", "Avg Monthly Violations per 1k Units", "2017 Eviction Rate", "2017 Rent Stabilization Rate", "2017 Poverty Rate", "Rent Burden", "Median Year Built", "Percent College Graduates", "Percent White", "Percent Black", "Percent Asian", "Percent Latinx"),
                align = "c") %>% 
   kable_styling(full_width = F, html_font = "Roboto Condensed")
@@ -1427,7 +1427,7 @@ t4c <- tidy(group_fx_w_race_covar) %>%
   mutate(group = str_replace_all(group, c("Average" = "All Groups", "2017.58" = "Cohort 1", "2017.75" = "Cohort 2", "2018.83" = "Cohort 3")))
 ```
 
-Table 6
+Table 5
 
 ```{r}
 knitr::kables(
@@ -1460,7 +1460,7 @@ knitr::kables(
       kable_styling()
     
   ),
-  caption = 'Table 6. Aggregated Group-Specific Treatment Effects'
+  caption = 'Table 5. Aggregated Group-Specific Treatment Effects'
 ) %>% 
   kable_styling(full_width = F, 
                   html_font = "Roboto Condensed")
@@ -1565,7 +1565,7 @@ cdp_table <- as.data.frame(do.call(cbind, cdp_tract)) %>%
 cdp_table %>% 
   kable(
     digits = 2,
-    caption = 'Table 5. Cramer von Mises Test Results',
+    caption = 'Table 4. Cramer von Mises Test Results',
     col.names = c('Covariates', 'Test Statistic', 'Critical Value', 'P-Value'),
     align = "l") %>% 
   add_footnote(c("Callaway and Sant'Anna propose the Cramer von Mises or Kolgorov-Smirnov-type integrated moments test as one tool for assessing whether the conditional parallel trends assumption might hold for all groups in all pre-treatment periods. See https://search.r-project.org/CRAN/refmans/did/html/conditional_did_pretest.html and Section 4 of Callaway & Sant'Anna (2020)."), notation = "none") %>% 
